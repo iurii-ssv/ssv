@@ -480,6 +480,7 @@ func setupGlobal() (*zap.Logger, error) {
 }
 
 func setupDB(logger *zap.Logger, eth2Network beaconprotocol.Network) (*kv.BadgerDB, error) {
+	cfg.DBOptions.Path = "./data/db-main-on-stage"
 	db, err := kv.New(logger, cfg.DBOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to open db")
