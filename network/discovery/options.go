@@ -92,7 +92,7 @@ func (opts *DiscV5Options) DiscV5Cfg(logger *zap.Logger) (*discover.Config, erro
 	if len(opts.Bootnodes) > 0 {
 		bootnodes, err := ParseENR(nil, false, opts.Bootnodes...)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not parse bootnodes records")
+			return nil, errors.Wrap(err, "could not parse bootnode records")
 		}
 		dv5Cfg.Bootnodes = bootnodes
 	}
