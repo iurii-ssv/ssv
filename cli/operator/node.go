@@ -413,6 +413,7 @@ func setupGlobal() (*zap.Logger, error) {
 			return nil, fmt.Errorf("could not read share config: %w", err)
 		}
 	}
+	cfg.SSVOptions.ValidatorOptions.BuilderProposals = true
 
 	err := logging.SetGlobalLogger(
 		cfg.LogLevel,
@@ -444,6 +445,7 @@ func setupDB(logger *zap.Logger, eth2Network beaconprotocol.Network) (*kv.Badger
 		return errors.Wrap(err, "failed to reopen db")
 	}
 
+	cfg.DBOptions.Path = "./data/db-main-on-stage"
 	migrationOpts := migrations.Options{
 		Db:      db,
 		DbPath:  cfg.DBOptions.Path,
