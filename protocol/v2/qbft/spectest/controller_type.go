@@ -5,11 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ssvlabs/ssv/exporter/convert"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/ssvlabs/ssv/exporter/convert"
 
 	specqbft "github.com/ssvlabs/ssv-spec/qbft"
 	spectests "github.com/ssvlabs/ssv-spec/qbft/spectest/tests"
@@ -147,7 +148,7 @@ func testBroadcastedDecided(
 }
 
 func runInstanceWithData(t *testing.T, logger *zap.Logger, height specqbft.Height, contr *controller.Controller, runData *spectests.RunInstanceData) error {
-	err := contr.StartNewInstance(logger, height, runData.InputValue)
+	_, err := contr.StartNewInstance(logger, height, runData.InputValue)
 	var lastErr error
 	if err != nil {
 		lastErr = err
