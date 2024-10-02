@@ -9,7 +9,7 @@ import (
 )
 
 // limitNodeFilter returns true if the limit is exceeded
-func (dvs *DiscV5Service) limitNodeFilter(node *enode.Node) bool {
+func (dvs *DiscV5Service) limitNodeFilter() bool {
 	return !dvs.conns.AtLimit(libp2pnetwork.DirOutbound)
 }
 
@@ -36,7 +36,7 @@ func (dvs *DiscV5Service) badNodeFilter(logger *zap.Logger) func(node *enode.Nod
 }
 
 // badNodeFilter checks if the node was pruned or have a bad score
-func (dvs *DiscV5Service) ssvNodeFilter(logger *zap.Logger) func(node *enode.Node) bool {
+func (dvs *DiscV5Service) ssvNodeFilter() func(node *enode.Node) bool {
 	return func(node *enode.Node) bool {
 		var isSSV = new(bool)
 		if err := node.Record().Load(enr.WithEntry("ssv", isSSV)); err != nil {

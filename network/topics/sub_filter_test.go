@@ -5,13 +5,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ssvlabs/ssv/logging"
 	"github.com/ssvlabs/ssv/network/commons"
 )
 
 func TestSubFilter(t *testing.T) {
-	l := logging.TestLogger(t)
-	sf := newSubFilter(l, 2)
+	sf := newSubFilter(2)
 
 	require.False(t, sf.CanSubscribe("xxx"))
 	require.False(t, sf.CanSubscribe(commons.GetTopicFullName("xxx")))

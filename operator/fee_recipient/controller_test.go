@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 
 	spectypes "github.com/ssvlabs/ssv-spec/types"
 	"github.com/ssvlabs/ssv/logging"
@@ -42,7 +41,7 @@ func TestSubmitProposal(t *testing.T) {
 	db, shareStorage, recipientStorage := createStorage(t)
 	defer db.Close()
 	network := networkconfig.TestNetwork
-	populateStorage(t, logger, shareStorage, operatorData)
+	populateStorage(t, shareStorage, operatorData)
 
 	frCtrl := NewController(&ControllerOptions{
 		Ctx:               context.TODO(),
@@ -136,7 +135,7 @@ func createStorage(t *testing.T) (basedb.Database, registrystorage.Shares, regis
 	return db, shareStorage, registrystorage.NewRecipientsStorage(logger, db, []byte("test"))
 }
 
-func populateStorage(t *testing.T, logger *zap.Logger, storage registrystorage.Shares, operatorData *registrystorage.OperatorData) {
+func populateStorage(t *testing.T, storage registrystorage.Shares, operatorData *registrystorage.OperatorData) {
 	createShare := func(index int, operatorID spectypes.OperatorID) *types.SSVShare {
 		ownerAddr := fmt.Sprintf("%d", index)
 		ownerAddrByte := [20]byte{}
@@ -145,7 +144,7 @@ func populateStorage(t *testing.T, logger *zap.Logger, storage registrystorage.S
 		return &types.SSVShare{
 			Share: spectypes.Share{ValidatorPubKey: spectypes.ValidatorPK([]byte(fmt.Sprintf("pk%046d", index))),
 				ValidatorIndex: phase0.ValidatorIndex(index),
-				Committee:      []*spectypes.ShareMember{&spectypes.ShareMember{Signer: operatorID}},
+				Committee:      []*spectypes.ShareMember{{Signer: operatorID}},
 			},
 			Metadata: types.Metadata{
 				BeaconMetadata: &beacon.ValidatorMetadata{

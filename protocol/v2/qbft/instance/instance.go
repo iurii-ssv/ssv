@@ -204,7 +204,7 @@ func (i *Instance) BaseMsgValidation(msg *specqbft.ProcessingMessage) error {
 			i.State.CommitteeMember.Committee,
 		)
 	case specqbft.RoundChangeMsgType:
-		return validRoundChangeForDataIgnoreSignature(i.State, i.config, msg, i.State.Height, msg.QBFTMessage.Round, msg.SignedMessage.FullData)
+		return validRoundChangeForDataIgnoreSignature(i.State, msg, i.State.Height, msg.QBFTMessage.Round, msg.SignedMessage.FullData)
 	default:
 		return errors.New("signed message type not supported")
 	}

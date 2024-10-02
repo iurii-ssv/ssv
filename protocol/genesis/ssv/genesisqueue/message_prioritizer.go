@@ -52,7 +52,7 @@ func (p *standardPrioritizer) Prior(a, b *GenesisSSVMessage) bool {
 		return scoreA > scoreB
 	}
 
-	scoreA, scoreB = scoreConsensusType(p.state, a), scoreConsensusType(p.state, b)
+	scoreA, scoreB = scoreConsensusType(a), scoreConsensusType(b)
 	if scoreA != scoreB {
 		return scoreA > scoreB
 	}

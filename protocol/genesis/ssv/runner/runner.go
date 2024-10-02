@@ -1,8 +1,9 @@
 package runner
 
 import (
-	spectypes "github.com/ssvlabs/ssv-spec/types"
 	"sync"
+
+	spectypes "github.com/ssvlabs/ssv-spec/types"
 
 	spec "github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
@@ -123,8 +124,8 @@ func (b *BaseRunner) basePreConsensusMsgProcessing(runner Runner, signedMsg *gen
 		return false, nil, errors.Wrap(err, "invalid pre-consensus message")
 	}
 
-	hasQuorum, roots, err := b.basePartialSigMsgProcessing(signedMsg, b.State.PreConsensusContainer)
-	return hasQuorum, roots, errors.Wrap(err, "could not process pre-consensus partial signature msg")
+	hasQuorum, roots := b.basePartialSigMsgProcessing(signedMsg, b.State.PreConsensusContainer)
+	return hasQuorum, roots, nil
 }
 
 // baseConsensusMsgProcessing is a base func that all runner implementation can call for processing a consensus msg
@@ -189,20 +190,20 @@ func (b *BaseRunner) baseConsensusMsgProcessing(logger *zap.Logger, runner Runne
 }
 
 // basePostConsensusMsgProcessing is a base func that all runner implementation can call for processing a post-consensus msg
-func (b *BaseRunner) basePostConsensusMsgProcessing(logger *zap.Logger, runner Runner, signedMsg *genesisspectypes.SignedPartialSignatureMessage) (bool, [][32]byte, error) {
+func (b *BaseRunner) basePostConsensusMsgProcessing(runner Runner, signedMsg *genesisspectypes.SignedPartialSignatureMessage) (bool, [][32]byte, error) {
 	if err := b.ValidatePostConsensusMsg(runner, signedMsg); err != nil {
 		return false, nil, errors.Wrap(err, "invalid post-consensus message")
 	}
 
-	hasQuorum, roots, err := b.basePartialSigMsgProcessing(signedMsg, b.State.PostConsensusContainer)
-	return hasQuorum, roots, errors.Wrap(err, "could not process post-consensus partial signature msg")
+	hasQuorum, roots := b.basePartialSigMsgProcessing(signedMsg, b.State.PostConsensusContainer)
+	return hasQuorum, roots, nil
 }
 
 // basePartialSigMsgProcessing adds a validated (without signature verification) validated partial msg to the container, checks for quorum and returns true (and roots) if quorum exists
 func (b *BaseRunner) basePartialSigMsgProcessing(
 	signedMsg *genesisspectypes.SignedPartialSignatureMessage,
 	container *genesisspecssv.PartialSigContainer,
-) (bool, [][32]byte, error) {
+) (bool, [][32]byte) {
 	roots := make([][32]byte, 0)
 	anyQuorum := false
 	for _, msg := range signedMsg.Message.Messages {
@@ -224,7 +225,7 @@ func (b *BaseRunner) basePartialSigMsgProcessing(
 		}
 	}
 
-	return anyQuorum, roots, nil
+	return anyQuorum, roots
 }
 
 // didDecideCorrectly returns true if the expected consensus instance decided correctly

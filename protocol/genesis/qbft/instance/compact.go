@@ -12,7 +12,7 @@ import (
 //
 // This helps reduce the state's memory footprint.
 func Compact(state *genesisspecqbft.State, decidedMessage *genesisspecqbft.SignedMessage) {
-	compact(state, decidedMessage, compactContainerEdit)
+	compact(state, compactContainerEdit)
 }
 
 // CompactCopy returns a compacted copy of the given qbft.State.
@@ -24,11 +24,11 @@ func Compact(state *genesisspecqbft.State, decidedMessage *genesisspecqbft.Signe
 // See Compact for more details.
 func CompactCopy(state *genesisspecqbft.State, decidedMessage *genesisspecqbft.SignedMessage) *genesisspecqbft.State {
 	stateCopy := *state
-	compact(&stateCopy, decidedMessage, compactContainerCopy)
+	compact(&stateCopy, compactContainerCopy)
 	return &stateCopy
 }
 
-func compact(state *genesisspecqbft.State, decidedMessage *genesisspecqbft.SignedMessage, compactContainer compactContainerFunc) {
+func compact(state *genesisspecqbft.State, compactContainer compactContainerFunc) {
 	state.ProposeContainer = compactContainer(state.ProposeContainer, state.Round, state.Decided)
 	state.PrepareContainer = compactContainer(state.PrepareContainer, state.LastPreparedRound, state.Decided)
 	state.RoundChangeContainer = compactContainer(state.RoundChangeContainer, state.Round, state.Decided)

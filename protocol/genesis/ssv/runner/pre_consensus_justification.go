@@ -145,11 +145,7 @@ func (b *BaseRunner) processPreConsensusJustification(logger *zap.Logger, runner
 	// add pre-consensus sigs to state container
 	var r [][32]byte
 	for _, signedMsg := range cd.PreConsensusJustifications {
-		quorum, roots, err := b.basePartialSigMsgProcessing(signedMsg, b.State.PreConsensusContainer)
-		if err != nil {
-			return errors.Wrap(err, "invalid partial sig processing")
-		}
-
+		quorum, roots := b.basePartialSigMsgProcessing(signedMsg, b.State.PreConsensusContainer)
 		if quorum {
 			r = roots
 			break

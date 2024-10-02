@@ -159,7 +159,7 @@ func TestCompact(t *testing.T) {
 			require.Equal(t, inputStateBefore, inputStateAfter)
 
 			// Test Compact.
-			Compact(tt.inputState, tt.inputMsg)
+			Compact(tt.inputState)
 			require.Equal(t, tt.expected, tt.inputState)
 		})
 	}

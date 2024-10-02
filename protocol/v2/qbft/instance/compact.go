@@ -12,8 +12,8 @@ import (
 // Compact discards all non-commit messages, only if the given state is decided.
 //
 // This helps reduce the state's memory footprint.
-func Compact(state *specqbft.State, decidedMessage *spectypes.SignedSSVMessage) {
-	compact(state, decidedMessage, compactContainerEdit)
+func Compact(state *specqbft.State) {
+	compact(state, compactContainerEdit)
 }
 
 // CompactCopy returns a compacted copy of the given qbft.State.
@@ -25,11 +25,11 @@ func Compact(state *specqbft.State, decidedMessage *spectypes.SignedSSVMessage) 
 // See Compact for more details.
 func CompactCopy(state *specqbft.State, decidedMessage *spectypes.SignedSSVMessage) *specqbft.State {
 	stateCopy := *state
-	compact(&stateCopy, decidedMessage, compactContainerCopy)
+	compact(&stateCopy, compactContainerCopy)
 	return &stateCopy
 }
 
-func compact(state *specqbft.State, decidedMessage *spectypes.SignedSSVMessage, compactContainer compactContainerFunc) {
+func compact(state *specqbft.State, compactContainer compactContainerFunc) {
 	state.ProposeContainer = compactContainer(state.ProposeContainer, state.Round, state.Decided)
 	state.PrepareContainer = compactContainer(state.PrepareContainer, state.LastPreparedRound, state.Decided)
 	state.RoundChangeContainer = compactContainer(state.RoundChangeContainer, state.Round, state.Decided)

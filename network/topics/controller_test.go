@@ -57,7 +57,7 @@ func TestTopicManager(t *testing.T) {
 		validator := &DummyMessageValidator{}
 
 		peers := newPeers(ctx, logger, t, nPeers, validator, true, nil)
-		baseTest(t, ctx, logger, peers, pks, 1, 2)
+		baseTest(t, ctx, logger, peers, pks, 1)
 	})
 
 	t.Run("banning peer", func(t *testing.T) {
@@ -90,11 +90,11 @@ func TestTopicManager(t *testing.T) {
 
 		const nPeers = 4
 		peers := newPeers(ctx, logger, t, nPeers, validator, true, scoreInspector)
-		banningTest(t, ctx, logger, peers, pks, scoreMap, &scoreMapMu)
+		banningTest(t, logger, peers, pks, scoreMap, &scoreMapMu)
 	})
 }
 
-func baseTest(t *testing.T, ctx context.Context, logger *zap.Logger, peers []*P, pks []string, minMsgCount, maxMsgCount int) {
+func baseTest(t *testing.T, ctx context.Context, logger *zap.Logger, peers []*P, pks []string, minMsgCount int) {
 	nValidators := len(pks)
 	// nPeers := len(peers)
 
@@ -198,7 +198,7 @@ func baseTest(t *testing.T, ctx context.Context, logger *zap.Logger, peers []*P,
 	wg.Wait()
 }
 
-func banningTest(t *testing.T, ctx context.Context, logger *zap.Logger, peers []*P, pks []string, scoreMap map[peer.ID]*pubsub.PeerScoreSnapshot, scoreMapMu *sync.Mutex) {
+func banningTest(t *testing.T, logger *zap.Logger, peers []*P, pks []string, scoreMap map[peer.ID]*pubsub.PeerScoreSnapshot, scoreMapMu *sync.Mutex) {
 	t.Log("subscribing to topics")
 
 	for _, pk := range pks {

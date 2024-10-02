@@ -32,10 +32,7 @@ func (i *Instance) UponCommit(logger *zap.Logger, signedCommit *genesisspecqbft.
 		fields.Root(signedCommit.Message.Root))
 
 	// calculate commit quorum and act upon it
-	quorum, commitMsgs, err := commitQuorumForRoundRoot(i.State, commitMsgContainer, signedCommit.Message.Root, signedCommit.Message.Round)
-	if err != nil {
-		return false, nil, nil, errors.Wrap(err, "could not calculate commit quorum")
-	}
+	quorum, commitMsgs := commitQuorumForRoundRoot(i.State, commitMsgContainer, signedCommit.Message.Root, signedCommit.Message.Round)
 
 	if quorum {
 		fullData := i.State.ProposalAcceptedForCurrentRound.FullData /* must have value there, checked on validateCommit */
@@ -59,9 +56,9 @@ func (i *Instance) UponCommit(logger *zap.Logger, signedCommit *genesisspecqbft.
 }
 
 // returns true if there is a quorum for the current round for this provided value
-func commitQuorumForRoundRoot(state *genesisspecqbft.State, commitMsgContainer *genesisspecqbft.MsgContainer, root [32]byte, round genesisspecqbft.Round) (bool, []*genesisspecqbft.SignedMessage, error) {
+func commitQuorumForRoundRoot(state *genesisspecqbft.State, commitMsgContainer *genesisspecqbft.MsgContainer, root [32]byte, round genesisspecqbft.Round) (bool, []*genesisspecqbft.SignedMessage) {
 	signers, msgs := commitMsgContainer.LongestUniqueSignersForRoundAndRoot(round, root)
-	return state.Share.HasQuorum(len(signers)), msgs, nil
+	return state.Share.HasQuorum(len(signers)), msgs
 }
 
 func aggregateCommitMsgs(msgs []*genesisspecqbft.SignedMessage, fullData []byte) (*genesisspecqbft.SignedMessage, error) {

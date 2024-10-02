@@ -34,7 +34,7 @@ func TestTimeouts(t *testing.T) {
 		undialableServer := mockServer(t, delays{
 			BaseDelay: commonTimeout * 2,
 		})
-		_, err := mockClient(t, ctx, undialableServer.URL, commonTimeout, longTimeout)
+		_, err := mockClient(ctx, undialableServer.URL, commonTimeout, longTimeout)
 		require.ErrorContains(t, err, "client is not active")
 	}
 
@@ -44,7 +44,7 @@ func TestTimeouts(t *testing.T) {
 			ValidatorsDelay:  longTimeout * 2,
 			BeaconStateDelay: longTimeout / 2,
 		})
-		client, err := mockClient(t, ctx, unresponsiveServer.URL, commonTimeout, longTimeout)
+		client, err := mockClient(ctx, unresponsiveServer.URL, commonTimeout, longTimeout)
 		require.NoError(t, err)
 
 		validators, err := client.(*GoClient).GetValidatorData(nil) // Should call BeaconState internally.
@@ -68,7 +68,7 @@ func TestTimeouts(t *testing.T) {
 		unresponsiveServer := mockServer(t, delays{
 			ProposerDutiesDelay: longTimeout * 2,
 		})
-		client, err := mockClient(t, ctx, unresponsiveServer.URL, commonTimeout, longTimeout)
+		client, err := mockClient(ctx, unresponsiveServer.URL, commonTimeout, longTimeout)
 		require.NoError(t, err)
 
 		_, err = client.(*GoClient).ProposerDuties(ctx, mockServerEpoch, nil)
@@ -81,7 +81,7 @@ func TestTimeouts(t *testing.T) {
 			BaseDelay:        commonTimeout / 2,
 			BeaconStateDelay: longTimeout / 2,
 		})
-		client, err := mockClient(t, ctx, fastServer.URL, commonTimeout, longTimeout)
+		client, err := mockClient(ctx, fastServer.URL, commonTimeout, longTimeout)
 		require.NoError(t, err)
 
 		validators, err := client.(*GoClient).GetValidatorData(nil)
@@ -94,7 +94,7 @@ func TestTimeouts(t *testing.T) {
 	}
 }
 
-func mockClient(t *testing.T, ctx context.Context, serverURL string, commonTimeout, longTimeout time.Duration) (beacon.BeaconNode, error) {
+func mockClient(ctx context.Context, serverURL string, commonTimeout, longTimeout time.Duration) (beacon.BeaconNode, error) {
 	return New(
 		zap.NewNop(),
 		beacon.Options{

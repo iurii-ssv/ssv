@@ -84,7 +84,6 @@ func testProcessMsg(
 	t *testing.T,
 	logger *zap.Logger,
 	contr *controller.Controller,
-	config *qbft.Config,
 	runData *spectests.RunInstanceData,
 ) error {
 	decidedCnt := uint(0)
@@ -154,7 +153,7 @@ func runInstanceWithData(t *testing.T, logger *zap.Logger, height genesisspecqbf
 
 	testTimer(t, contr.GetConfig().(*qbft.Config), runData)
 
-	if err := testProcessMsg(t, logger, contr, contr.GetConfig().(*qbft.Config), runData); err != nil {
+	if err := testProcessMsg(t, logger, contr, runData); err != nil {
 		lastErr = err
 	}
 

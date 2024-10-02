@@ -123,7 +123,7 @@ func NewPubSub(ctx context.Context, logger *zap.Logger, cfg *PubSubConfig, metri
 	}
 
 	// Set up a SubFilter with a whitelist of known topics.
-	sf := newSubFilter(logger, subscriptionRequestLimit)
+	sf := newSubFilter(subscriptionRequestLimit)
 	for _, topic := range commons.Topics() {
 		sf.(Whitelist).Register(topic)
 	}
@@ -176,7 +176,7 @@ func NewPubSub(ctx context.Context, logger *zap.Logger, cfg *PubSubConfig, metri
 			peerConnected := func(pid peer.ID) bool {
 				return cfg.Host.Network().Connectedness(pid) == libp2pnetwork.Connected
 			}
-			inspector = scoreInspector(logger, cfg.ScoreIndex, scoreInspectLogFrequency, metrics, peerConnected, peerScoreParams, topicScoreFactory, gossipScoreIndex)
+			inspector = scoreInspector(logger, scoreInspectLogFrequency, metrics, peerConnected, peerScoreParams, topicScoreFactory, gossipScoreIndex)
 		}
 		if inspectInterval == 0 {
 			inspectInterval = defaultScoreInspectInterval

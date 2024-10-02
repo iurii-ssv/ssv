@@ -57,7 +57,7 @@ func NewConnHandler(
 
 // Handle configures a network notifications handler that handshakes and tracks all p2p connections
 func (ch *connHandler) Handle(logger *zap.Logger) *libp2pnetwork.NotifyBundle {
-	disconnect := func(logger *zap.Logger, net libp2pnetwork.Network, conn libp2pnetwork.Conn) {
+	disconnect := func(net libp2pnetwork.Network, conn libp2pnetwork.Conn) {
 		id := conn.RemotePeer()
 		errClose := net.ClosePeer(id)
 		if errClose == nil {
@@ -178,7 +178,7 @@ func (ch *connHandler) Handle(logger *zap.Logger) *libp2pnetwork.NotifyBundle {
 					return
 				}
 				if err != nil {
-					disconnect(logger, net, conn)
+					disconnect(net, conn)
 					logger.Debug("failed to accept connection", zap.Error(err))
 					return
 				}

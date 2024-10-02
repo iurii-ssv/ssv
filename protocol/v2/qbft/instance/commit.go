@@ -31,11 +31,7 @@ func (i *Instance) UponCommit(logger *zap.Logger, msg *specqbft.ProcessingMessag
 	}
 
 	// calculate commit quorum and act upon it
-	quorum, commitMsgs, err := commitQuorumForRoundRoot(i.State, commitMsgContainer, msg.QBFTMessage.Root, msg.QBFTMessage.Round)
-	if err != nil {
-		return false, nil, nil, errors.Wrap(err, "could not calculate commit quorum")
-	}
-
+	quorum, commitMsgs := commitQuorumForRoundRoot(i.State, commitMsgContainer, msg.QBFTMessage.Root, msg.QBFTMessage.Round)
 	if quorum {
 		fullData := i.State.ProposalAcceptedForCurrentRound.SignedMessage.FullData /* must have value there, checked on validateCommit */
 
@@ -58,9 +54,9 @@ func (i *Instance) UponCommit(logger *zap.Logger, msg *specqbft.ProcessingMessag
 }
 
 // returns true if there is a quorum for the current round for this provided value
-func commitQuorumForRoundRoot(state *specqbft.State, commitMsgContainer *specqbft.MsgContainer, root [32]byte, round specqbft.Round) (bool, []*specqbft.ProcessingMessage, error) {
+func commitQuorumForRoundRoot(state *specqbft.State, commitMsgContainer *specqbft.MsgContainer, root [32]byte, round specqbft.Round) (bool, []*specqbft.ProcessingMessage) {
 	signers, msgs := commitMsgContainer.LongestUniqueSignersForRoundAndRoot(round, root)
-	return state.CommitteeMember.HasQuorum(len(signers)), msgs, nil
+	return state.CommitteeMember.HasQuorum(len(signers)), msgs
 }
 
 func aggregateCommitMsgs(msgs []*specqbft.ProcessingMessage, fullData []byte) (*spectypes.SignedSSVMessage, error) {

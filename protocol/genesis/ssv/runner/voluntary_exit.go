@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+
 	spectypes "github.com/ssvlabs/ssv-spec/types"
 
 	"github.com/attestantio/go-eth2-client/spec/phase0"
@@ -117,10 +118,7 @@ func (r *VoluntaryExitRunner) ProcessPostConsensus(logger *zap.Logger, signedMsg
 }
 
 func (r *VoluntaryExitRunner) expectedPreConsensusRootsAndDomain() ([]ssz.HashRoot, phase0.DomainType, error) {
-	vr, err := r.calculateVoluntaryExit()
-	if err != nil {
-		return nil, genesisspectypes.DomainError, errors.Wrap(err, "could not calculate voluntary exit")
-	}
+	vr := r.calculateVoluntaryExit()
 	return []ssz.HashRoot{vr}, genesisspectypes.DomainVoluntaryExit, nil
 }
 
@@ -133,10 +131,7 @@ func (r *VoluntaryExitRunner) expectedPostConsensusRootsAndDomain() ([]ssz.HashR
 // It just performs pre-consensus with VoluntaryExitPartialSig over
 // a VoluntaryExit object to create a SignedVoluntaryExit
 func (r *VoluntaryExitRunner) executeDuty(logger *zap.Logger, duty *genesisspectypes.Duty) error {
-	voluntaryExit, err := r.calculateVoluntaryExit()
-	if err != nil {
-		return errors.Wrap(err, "could not calculate voluntary exit")
-	}
+	voluntaryExit := r.calculateVoluntaryExit()
 
 	// get PartialSignatureMessage with voluntaryExit root and signature
 	msg, err := r.BaseRunner.signBeaconObject(r, voluntaryExit, duty.Slot, genesisspectypes.DomainVoluntaryExit)
@@ -182,13 +177,13 @@ func (r *VoluntaryExitRunner) executeDuty(logger *zap.Logger, duty *genesisspect
 }
 
 // Returns *phase0.VoluntaryExit object with current epoch and own validator index
-func (r *VoluntaryExitRunner) calculateVoluntaryExit() (*phase0.VoluntaryExit, error) {
+func (r *VoluntaryExitRunner) calculateVoluntaryExit() *phase0.VoluntaryExit {
 	epoch := r.BaseRunner.BeaconNetwork.EstimatedEpochAtSlot(r.BaseRunner.State.StartingDuty.Slot)
 	validatorIndex := r.GetState().StartingDuty.ValidatorIndex
 	return &phase0.VoluntaryExit{
 		Epoch:          epoch,
 		ValidatorIndex: validatorIndex,
-	}, nil
+	}
 }
 
 func (r *VoluntaryExitRunner) GetBaseRunner() *BaseRunner {

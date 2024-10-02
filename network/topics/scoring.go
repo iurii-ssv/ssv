@@ -37,7 +37,6 @@ type topicScoreSnapshot struct {
 // adding the peers' scores.
 // TODO: finalize once validation is in place
 func scoreInspector(logger *zap.Logger,
-	scoreIdx peers.ScoreIndex,
 	logFrequency int,
 	metrics Metrics,
 	peerConnected func(pid peer.ID) bool,

@@ -79,14 +79,11 @@ func (rc *recipientController) listenToTicker(logger *zap.Logger) {
 		}
 		firstTimeSubmitted = true
 
-		err := rc.prepareAndSubmit(logger, slot)
-		if err != nil {
-			logger.Warn("could not submit proposal preparations", zap.Error(err))
-		}
+		rc.prepareAndSubmit(logger)
 	}
 }
 
-func (rc *recipientController) prepareAndSubmit(logger *zap.Logger, slot phase0.Slot) error {
+func (rc *recipientController) prepareAndSubmit(logger *zap.Logger) {
 	shares := rc.shareStorage.List(
 		nil,
 		storage.ByOperatorID(rc.operatorDataStore.GetOperatorID()),
@@ -102,7 +99,7 @@ func (rc *recipientController) prepareAndSubmit(logger *zap.Logger, slot phase0.
 		}
 		batch := shares[start:end]
 
-		count, err := rc.submit(logger, batch)
+		count, err := rc.submit(batch)
 		if err != nil {
 			logger.Warn("could not submit proposal preparation batch",
 				zap.Int("start_index", start),
@@ -117,10 +114,9 @@ func (rc *recipientController) prepareAndSubmit(logger *zap.Logger, slot phase0.
 		zap.Int("submitted", submitted),
 		zap.Int("total", len(shares)),
 	)
-	return nil
 }
 
-func (rc *recipientController) submit(logger *zap.Logger, shares []*types.SSVShare) (int, error) {
+func (rc *recipientController) submit(shares []*types.SSVShare) (int, error) {
 	m, err := rc.toProposalPreparation(shares)
 	if err != nil {
 		return 0, errors.Wrap(err, "could not build proposal preparation batch")

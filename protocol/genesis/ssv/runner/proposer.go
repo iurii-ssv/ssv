@@ -4,8 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	spectypes "github.com/ssvlabs/ssv-spec/types"
 	"time"
+
+	spectypes "github.com/ssvlabs/ssv-spec/types"
 
 	"github.com/attestantio/go-eth2-client/api"
 	apiv1capella "github.com/attestantio/go-eth2-client/api/v1/capella"
@@ -219,7 +220,7 @@ func (r *ProposerRunner) ProcessConsensus(logger *zap.Logger, signedMsg *genesis
 }
 
 func (r *ProposerRunner) ProcessPostConsensus(logger *zap.Logger, signedMsg *genesisspectypes.SignedPartialSignatureMessage) error {
-	quorum, roots, err := r.BaseRunner.basePostConsensusMsgProcessing(logger, r, signedMsg)
+	quorum, roots, err := r.BaseRunner.basePostConsensusMsgProcessing(r, signedMsg)
 	if err != nil {
 		return errors.Wrap(err, "failed processing post consensus message")
 	}

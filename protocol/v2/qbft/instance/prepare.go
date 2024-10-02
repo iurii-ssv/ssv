@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ssvlabs/ssv/logging/fields"
-	"github.com/ssvlabs/ssv/protocol/v2/qbft"
 	ssvtypes "github.com/ssvlabs/ssv/protocol/v2/types"
 )
 
@@ -138,7 +137,6 @@ func validSignedPrepareForHeightRoundAndRootIgnoreSignature(
 }
 
 func validSignedPrepareForHeightRoundAndRootVerifySignature(
-	config qbft.IConfig,
 	msg *specqbft.ProcessingMessage,
 	height specqbft.Height,
 	round specqbft.Round,

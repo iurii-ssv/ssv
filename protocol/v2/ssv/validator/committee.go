@@ -179,9 +179,7 @@ func (c *Committee) StartDuty(logger *zap.Logger, duty *spectypes.CommitteeDuty)
 
 	// Prunes all expired committee runners, when new runner is created
 	pruneLogger := c.logger.With(zap.Uint64("current_slot", uint64(duty.Slot)))
-	if err := c.unsafePruneExpiredRunners(pruneLogger, duty.Slot); err != nil {
-		pruneLogger.Error("couldn't prune expired committee runners", zap.Error(err))
-	}
+	c.unsafePruneExpiredRunners(pruneLogger, duty.Slot)
 
 	logger.Info("ℹ️ starting duty processing")
 	err = runner.StartNewDuty(logger, duty, c.CommitteeMember.GetQuorum())
@@ -270,9 +268,9 @@ func (c *Committee) ProcessMessage(logger *zap.Logger, msg *queue.SSVMessage) er
 	return nil
 
 }
-func (c *Committee) unsafePruneExpiredRunners(logger *zap.Logger, currentSlot phase0.Slot) error {
+func (c *Committee) unsafePruneExpiredRunners(logger *zap.Logger, currentSlot phase0.Slot) {
 	if runnerExpirySlots > currentSlot {
-		return nil
+		return
 	}
 
 	minValidSlot := currentSlot - runnerExpirySlots
@@ -288,8 +286,6 @@ func (c *Committee) unsafePruneExpiredRunners(logger *zap.Logger, currentSlot ph
 			delete(c.Queues, slot)
 		}
 	}
-
-	return nil
 }
 
 func (c *Committee) Stop() {

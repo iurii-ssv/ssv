@@ -121,7 +121,6 @@ func isValidProposal(
 
 	if err := isProposalJustification(
 		state,
-		config,
 		roundChangeJustification,
 		prepareJustification,
 		state.Height,
@@ -153,7 +152,6 @@ func IsProposalJustification(
 			CommitteeMember: committeeMember,
 			Height:          height,
 		},
-		config,
 		roundChangeMsgs,
 		prepareMsgs,
 		height,
@@ -166,7 +164,6 @@ func IsProposalJustification(
 // isProposalJustification returns nil if the proposal and round change messages are valid and justify a proposal message for the provided round, value and leader
 func isProposalJustification(
 	state *specqbft.State,
-	config qbft.IConfig,
 	roundChangeMsgs []*specqbft.ProcessingMessage,
 	prepareMsgs []*specqbft.ProcessingMessage,
 	height specqbft.Height,
@@ -185,7 +182,7 @@ func isProposalJustification(
 		// no quorum, duplicate signers,  invalid still has quorum, invalid no quorum
 		// prepared
 		for _, rc := range roundChangeMsgs {
-			if err := validRoundChangeForDataVerifySignature(state, config, rc, height, round, fullData); err != nil {
+			if err := validRoundChangeForDataVerifySignature(state, rc, height, round, fullData); err != nil {
 				return errors.Wrap(err, "change round msg not valid")
 			}
 		}
@@ -196,17 +193,14 @@ func isProposalJustification(
 		}
 
 		// previouslyPreparedF returns true if any on the round change messages have a prepared round and fullData
-		previouslyPrepared, err := func(rcMsgs []*specqbft.ProcessingMessage) (bool, error) {
+		previouslyPrepared := func(rcMsgs []*specqbft.ProcessingMessage) bool {
 			for _, rc := range rcMsgs {
 				if rc.QBFTMessage.RoundChangePrepared() {
-					return true, nil
+					return true
 				}
 			}
-			return false, nil
+			return false
 		}(roundChangeMsgs)
-		if err != nil {
-			return errors.Wrap(err, "could not calculate if previously prepared")
-		}
 
 		if !previouslyPrepared {
 			return nil
@@ -218,10 +212,7 @@ func isProposalJustification(
 			}
 
 			// get a round change data for which there is a justification for the highest previously prepared round
-			rcMsg, err := highestPrepared(roundChangeMsgs)
-			if err != nil {
-				return errors.Wrap(err, "could not get highest prepared")
-			}
+			rcMsg := highestPrepared(roundChangeMsgs)
 			if rcMsg == nil {
 				return errors.New("no highest prepared")
 			}
@@ -238,7 +229,6 @@ func isProposalJustification(
 			// validate each prepare message against the highest previously prepared fullData and round
 			for _, pm := range prepareMsgs {
 				if err := validSignedPrepareForHeightRoundAndRootVerifySignature(
-					config,
 					pm,
 					height,
 					rcMsg.QBFTMessage.DataRound,

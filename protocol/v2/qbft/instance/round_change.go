@@ -215,7 +215,6 @@ func isProposalJustificationForLeadingRound(
 ) error {
 	if err := isReceivedProposalJustification(
 		state,
-		config,
 		roundChanges,
 		roundChangeJustifications,
 		roundChangeMsg.QBFTMessage.Round,
@@ -241,7 +240,6 @@ func isProposalJustificationForLeadingRound(
 // isReceivedProposalJustification - returns nil if we have a quorum of round change msgs and highest justified value
 func isReceivedProposalJustification(
 	state *specqbft.State,
-	config qbft.IConfig,
 	roundChanges, prepares []*specqbft.ProcessingMessage,
 	newRound specqbft.Round,
 	value []byte,
@@ -249,7 +247,6 @@ func isReceivedProposalJustification(
 ) error {
 	if err := isProposalJustification(
 		state,
-		config,
 		roundChanges,
 		prepares,
 		state.Height,
@@ -264,7 +261,6 @@ func isReceivedProposalJustification(
 
 func validRoundChangeForDataIgnoreSignature(
 	state *specqbft.State,
-	config qbft.IConfig,
 	msg *specqbft.ProcessingMessage,
 	height specqbft.Height,
 	round specqbft.Round,
@@ -313,7 +309,6 @@ func validRoundChangeForDataIgnoreSignature(
 
 		for _, pm := range prepareMsgs {
 			if err := validSignedPrepareForHeightRoundAndRootVerifySignature(
-				config,
 				pm,
 				state.Height,
 				msg.QBFTMessage.DataRound,
@@ -343,13 +338,12 @@ func validRoundChangeForDataIgnoreSignature(
 
 func validRoundChangeForDataVerifySignature(
 	state *specqbft.State,
-	config qbft.IConfig,
 	msg *specqbft.ProcessingMessage,
 	height specqbft.Height,
 	round specqbft.Round,
 	fullData []byte,
 ) error {
-	if err := validRoundChangeForDataIgnoreSignature(state, config, msg, height, round, fullData); err != nil {
+	if err := validRoundChangeForDataIgnoreSignature(state, msg, height, round, fullData); err != nil {
 		return err
 	}
 
@@ -362,7 +356,7 @@ func validRoundChangeForDataVerifySignature(
 }
 
 // highestPrepared returns a round change message with the highest prepared round, returns nil if none found
-func highestPrepared(roundChanges []*specqbft.ProcessingMessage) (*specqbft.ProcessingMessage, error) {
+func highestPrepared(roundChanges []*specqbft.ProcessingMessage) *specqbft.ProcessingMessage {
 	var ret *specqbft.ProcessingMessage
 	var highestPreparedRound specqbft.Round
 	for _, rc := range roundChanges {
@@ -380,7 +374,7 @@ func highestPrepared(roundChanges []*specqbft.ProcessingMessage) (*specqbft.Proc
 			}
 		}
 	}
-	return ret, nil
+	return ret
 }
 
 // returns the min round number out of the signed round change messages and the current round

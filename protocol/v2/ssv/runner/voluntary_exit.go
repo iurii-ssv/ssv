@@ -125,10 +125,7 @@ func (r *VoluntaryExitRunner) ProcessPostConsensus(logger *zap.Logger, signedMsg
 }
 
 func (r *VoluntaryExitRunner) expectedPreConsensusRootsAndDomain() ([]ssz.HashRoot, phase0.DomainType, error) {
-	vr, err := r.calculateVoluntaryExit()
-	if err != nil {
-		return nil, spectypes.DomainError, errors.Wrap(err, "could not calculate voluntary exit")
-	}
+	vr := r.calculateVoluntaryExit()
 	return []ssz.HashRoot{vr}, spectypes.DomainVoluntaryExit, nil
 }
 
@@ -142,10 +139,7 @@ func (r *VoluntaryExitRunner) expectedPostConsensusRootsAndDomain() ([]ssz.HashR
 // a VoluntaryExit object to create a SignedVoluntaryExit
 
 func (r *VoluntaryExitRunner) executeDuty(logger *zap.Logger, duty spectypes.Duty) error {
-	voluntaryExit, err := r.calculateVoluntaryExit()
-	if err != nil {
-		return errors.Wrap(err, "could not calculate voluntary exit")
-	}
+	voluntaryExit := r.calculateVoluntaryExit()
 
 	// get PartialSignatureMessage with voluntaryExit root and signature
 	msg, err := r.BaseRunner.signBeaconObject(r, duty.(*spectypes.ValidatorDuty), voluntaryExit, duty.DutySlot(), spectypes.DomainVoluntaryExit)
@@ -193,13 +187,13 @@ func (r *VoluntaryExitRunner) executeDuty(logger *zap.Logger, duty spectypes.Dut
 }
 
 // Returns *phase0.VoluntaryExit object with current epoch and own validator index
-func (r *VoluntaryExitRunner) calculateVoluntaryExit() (*phase0.VoluntaryExit, error) {
+func (r *VoluntaryExitRunner) calculateVoluntaryExit() *phase0.VoluntaryExit {
 	epoch := r.BaseRunner.BeaconNetwork.EstimatedEpochAtSlot(r.BaseRunner.State.StartingDuty.DutySlot())
 	validatorIndex := r.GetState().StartingDuty.(*spectypes.ValidatorDuty).ValidatorIndex
 	return &phase0.VoluntaryExit{
 		Epoch:          epoch,
 		ValidatorIndex: validatorIndex,
-	}, nil
+	}
 }
 
 func (r *VoluntaryExitRunner) GetBaseRunner() *BaseRunner {

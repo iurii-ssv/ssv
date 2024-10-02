@@ -157,10 +157,7 @@ func (mv *messageValidator) validateConsensusMessage(
 	return consensusDescriptor, msgSlot, nil
 }
 
-func (mv *messageValidator) validateJustifications(
-	share *ssvtypes.SSVShare,
-	signedMsg *genesisspecqbft.SignedMessage,
-) error {
+func (mv *messageValidator) validateJustifications(signedMsg *genesisspecqbft.SignedMessage) error {
 	pj, err := signedMsg.Message.GetPrepareJustifications()
 	if err != nil {
 		e := ErrMalformedPrepareJustifications
@@ -222,7 +219,7 @@ func (mv *messageValidator) validateSignerBehaviorConsensus(
 	// If signer state is nil, this is the first message for the signer and
 	// it's not necessary to check the next rules.
 	if signerState == nil {
-		return mv.validateJustifications(share, signedMsg)
+		return mv.validateJustifications(signedMsg)
 	}
 
 	msgSlot := phase0.Slot(signedMsg.Message.Height)
@@ -268,7 +265,7 @@ func (mv *messageValidator) validateSignerBehaviorConsensus(
 		}
 	}
 
-	return mv.validateJustifications(share, signedMsg)
+	return mv.validateJustifications(signedMsg)
 }
 
 func (mv *messageValidator) validateDutyCount(

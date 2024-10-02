@@ -4,7 +4,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ps_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"go.uber.org/zap"
 
 	"github.com/ssvlabs/ssv/utils/hashmap"
 
@@ -24,7 +23,7 @@ type subFilter struct {
 	subsLimit int
 }
 
-func newSubFilter(logger *zap.Logger, subsLimit int) SubFilter {
+func newSubFilter(subsLimit int) SubFilter {
 	return &subFilter{
 		whitelist: newWhitelist(),
 		subsLimit: subsLimit,

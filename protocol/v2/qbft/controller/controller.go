@@ -111,11 +111,7 @@ func (c *Controller) ProcessMsg(logger *zap.Logger, signedMessage *spectypes.Sig
 		return c.UponDecided(logger, msg)
 	}
 
-	isFuture, err := c.isFutureMessage(msg)
-	if err != nil {
-		return nil, err
-	}
-	if isFuture {
+	if c.isFutureMessage(msg) {
 		return nil, fmt.Errorf("future msg from height, could not process")
 	}
 
@@ -196,12 +192,12 @@ func (c *Controller) GetIdentifier() []byte {
 
 // isFutureMessage returns true if message height is from a future instance.
 // It takes into consideration a special case where FirstHeight didn't start but  c.Height == FirstHeight (since we bump height on start instance)
-func (c *Controller) isFutureMessage(msg *specqbft.ProcessingMessage) (bool, error) {
+func (c *Controller) isFutureMessage(msg *specqbft.ProcessingMessage) bool {
 	if c.Height == specqbft.FirstHeight && c.StoredInstances.FindInstance(c.Height) == nil {
-		return true, nil
+		return true
 	}
 
-	return msg.QBFTMessage.Height > c.Height, nil
+	return msg.QBFTMessage.Height > c.Height
 }
 
 // addAndStoreNewInstance returns creates a new QBFT instance, stores it in an array and returns it

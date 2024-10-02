@@ -205,7 +205,7 @@ func (n *p2pNetwork) Close() error {
 	return n.host.Close()
 }
 
-func (n *p2pNetwork) getConnector() (chan peer.AddrInfo, error) {
+func (n *p2pNetwork) getConnector() chan peer.AddrInfo {
 	connector := make(chan peer.AddrInfo, connectorQueueSize)
 	go func() {
 		// Wait for own subnets to be subscribed to and updated.
@@ -223,7 +223,7 @@ func (n *p2pNetwork) getConnector() (chan peer.AddrInfo, error) {
 		}
 	}()
 
-	return connector, nil
+	return connector
 }
 
 // Start starts the discovery service, garbage collector (peer index), and reporting.
@@ -233,11 +233,6 @@ func (n *p2pNetwork) Start(logger *zap.Logger) error {
 	if atomic.SwapInt32(&n.state, stateReady) == stateReady {
 		// return errors.New("could not setup network: in ready state")
 		return nil
-	}
-
-	connector, err := n.getConnector()
-	if err != nil {
-		return err
 	}
 
 	pAddrs, err := peer.AddrInfoToP2pAddrs(&peer.AddrInfo{
@@ -256,6 +251,7 @@ func (n *p2pNetwork) Start(logger *zap.Logger) error {
 		zap.Int("trusted_peers", len(n.trustedPeers)),
 	)
 
+	connector := n.getConnector()
 	go n.startDiscovery(logger, connector)
 
 	async.Interval(n.ctx, connManagerBalancingInterval, n.peersBalancing(logger))

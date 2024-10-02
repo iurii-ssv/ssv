@@ -179,17 +179,14 @@ func isProposalJustification(
 		}
 
 		// previouslyPreparedF returns true if any on the round change messages have a prepared round and fullData
-		previouslyPrepared, err := func(rcMsgs []*genesisspecqbft.SignedMessage) (bool, error) {
+		previouslyPrepared := func(rcMsgs []*genesisspecqbft.SignedMessage) bool {
 			for _, rc := range rcMsgs {
 				if rc.Message.RoundChangePrepared() {
-					return true, nil
+					return true
 				}
 			}
-			return false, nil
+			return false
 		}(roundChangeMsgs)
-		if err != nil {
-			return errors.Wrap(err, "could not calculate if previously prepared")
-		}
 
 		if !previouslyPrepared {
 			return nil
@@ -201,10 +198,7 @@ func isProposalJustification(
 			}
 
 			// get a round change data for which there is a justification for the highest previously prepared round
-			rcm, err := highestPrepared(roundChangeMsgs)
-			if err != nil {
-				return errors.Wrap(err, "could not get highest prepared")
-			}
+			rcm := highestPrepared(roundChangeMsgs)
 			if rcm == nil {
 				return errors.New("no highest prepared")
 			}

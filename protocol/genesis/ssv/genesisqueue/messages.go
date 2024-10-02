@@ -226,7 +226,7 @@ func scoreMessageSubtype(state *State, m *GenesisSSVMessage, relativeHeight int)
 
 // scoreConsensusType returns an integer score for the type of a consensus message.
 // When given a non-consensus message, scoreConsensusType returns 0.
-func scoreConsensusType(state *State, m *GenesisSSVMessage) int {
+func scoreConsensusType(m *GenesisSSVMessage) int {
 	if mm, ok := m.Body.(*genesisspecqbft.SignedMessage); ok {
 		switch mm.Message.MsgType {
 		case genesisspecqbft.ProposalMsgType:

@@ -107,10 +107,7 @@ func (r *ValidatorRegistrationRunner) ProcessPostConsensus(logger *zap.Logger, s
 }
 
 func (r *ValidatorRegistrationRunner) expectedPreConsensusRootsAndDomain() ([]ssz.HashRoot, phase0.DomainType, error) {
-	vr, err := r.calculateValidatorRegistration()
-	if err != nil {
-		return nil, genesisspectypes.DomainError, errors.Wrap(err, "could not calculate validator registration")
-	}
+	vr := r.calculateValidatorRegistration()
 	return []ssz.HashRoot{vr}, genesisspectypes.DomainApplicationBuilder, nil
 }
 
@@ -122,10 +119,7 @@ func (r *ValidatorRegistrationRunner) expectedPostConsensusRootsAndDomain() ([]s
 func (r *ValidatorRegistrationRunner) executeDuty(logger *zap.Logger, duty *genesisspectypes.Duty) error {
 	logger.Debug("executing validator registration duty",
 		zap.String("state_fee_recipient", hex.EncodeToString(r.BaseRunner.Share.FeeRecipientAddress[:])))
-	vr, err := r.calculateValidatorRegistration()
-	if err != nil {
-		return errors.Wrap(err, "could not calculate validator registration")
-	}
+	vr := r.calculateValidatorRegistration()
 
 	// sign partial randao
 	msg, err := r.BaseRunner.signBeaconObject(r, vr, duty.Slot, genesisspectypes.DomainApplicationBuilder)
@@ -165,7 +159,7 @@ func (r *ValidatorRegistrationRunner) executeDuty(logger *zap.Logger, duty *gene
 	return nil
 }
 
-func (r *ValidatorRegistrationRunner) calculateValidatorRegistration() (*v1.ValidatorRegistration, error) {
+func (r *ValidatorRegistrationRunner) calculateValidatorRegistration() *v1.ValidatorRegistration {
 	pk := phase0.BLSPubKey{}
 	copy(pk[:], r.GetShare().ValidatorPubKey)
 
@@ -176,7 +170,7 @@ func (r *ValidatorRegistrationRunner) calculateValidatorRegistration() (*v1.Vali
 		GasLimit:     genesisspectypes.DefaultGasLimit,
 		Timestamp:    r.BaseRunner.BeaconNetwork.EpochStartTime(epoch),
 		Pubkey:       pk,
-	}, nil
+	}
 }
 
 func (r *ValidatorRegistrationRunner) GetBaseRunner() *BaseRunner {
