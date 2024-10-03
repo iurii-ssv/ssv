@@ -8,10 +8,10 @@ import (
 	"sync"
 
 	"github.com/attestantio/go-eth2-client/spec/phase0"
-	spectypes "github.com/ssvlabs/ssv-spec/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
+	spectypes "github.com/ssvlabs/ssv-spec/types"
 	genesistypes "github.com/ssvlabs/ssv/protocol/genesis/types"
 	beaconprotocol "github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon"
 	"github.com/ssvlabs/ssv/protocol/v2/types"
@@ -210,24 +210,26 @@ func (s *sharesStorage) Save(rw basedb.ReadWriter, shares ...*types.SSVShare) er
 		}
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.unsafeSave(rw, shares...)
-}
-
-func (s *sharesStorage) unsafeSave(rw basedb.ReadWriter, shares ...*types.SSVShare) error {
-	err := s.db.Using(rw).SetMany(s.prefix, len(shares), func(i int) (basedb.Obj, error) {
-		share := specShareToStorageShare(shares[i])
+	var dbShares []basedb.Obj
+	for _, share := range shares {
+		share := specShareToStorageShare(share)
 		value, err := share.Encode()
 		if err != nil {
-			return basedb.Obj{}, fmt.Errorf("failed to serialize share: %w", err)
+			return fmt.Errorf("failed to serialize share: %w", err)
 		}
-		return basedb.Obj{Key: s.storageKey(share.ValidatorPubKey[:]), Value: value}, nil
+		dbShares = append(dbShares, basedb.Obj{Key: s.storageKey(share.ValidatorPubKey[:]), Value: value})
+	}
+
+	err := s.db.Using(rw).SetMany(s.prefix, len(dbShares), func(i int) (basedb.Obj, error) {
+		return dbShares[i], nil
 	})
 	if err != nil {
-		return err
+		s.logger.Error("persist share db objects", zap.Error(err))
+		return fmt.Errorf("persist share db objects: %w", err)
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	updateShares := make([]*types.SSVShare, 0, len(shares))
 	addShares := make([]*types.SSVShare, 0, len(shares))
@@ -364,15 +366,6 @@ func (s *sharesStorage) UpdateValidatorsMetadata(data map[spectypes.ValidatorPK]
 		}
 	}()
 
-	saveShares := func(sshares []*types.SSVShare) error {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		if err := s.unsafeSave(nil, sshares...); err != nil {
-			return err
-		}
-		return nil
-	}
-
 	// split into chunks to avoid holding the lock for too long
 	chunkSize := 1000
 	for i := 0; i < len(shares); i += chunkSize {
@@ -380,7 +373,7 @@ func (s *sharesStorage) UpdateValidatorsMetadata(data map[spectypes.ValidatorPK]
 		if end > len(shares) {
 			end = len(shares)
 		}
-		if err := saveShares(shares[i:end]); err != nil {
+		if err := s.Save(nil, shares[i:end]...); err != nil {
 			return err
 		}
 	}
