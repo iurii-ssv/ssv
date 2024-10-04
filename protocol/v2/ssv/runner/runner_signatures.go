@@ -13,7 +13,7 @@ import (
 	"github.com/ssvlabs/ssv/protocol/v2/types"
 )
 
-func (b *BaseRunner) signBeaconObject(
+func signBeaconObject(
 	runner Runner,
 	duty *spectypes.ValidatorDuty,
 	obj ssz.HashRoot,
