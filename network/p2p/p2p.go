@@ -276,7 +276,7 @@ func (n *p2pNetwork) Start(logger *zap.Logger) error {
 }
 
 // Returns a function that balances the peers.
-// Balancing is peformed by:
+// Balancing is performed by:
 // - Dropping peers with bad Gossip score.
 // - Dropping irrelevant peers that don't have any subnet in common.
 // - Tagging the best MaxPeers-1 peers (according to subnets intersection) as Protected and, then, removing the worst peer.
@@ -316,12 +316,6 @@ func (n *p2pNetwork) peersBalancing(logger *zap.Logger) func() {
 // it will try to bootstrap discovery service, and inject a connect function.
 // the connect function checks if we can connect to the given peer and if so passing it to the backoff connector.
 func (n *p2pNetwork) startDiscovery(logger *zap.Logger, connector chan peer.AddrInfo) {
-	discoveredPeers := make(chan peer.AddrInfo, connectorQueueSize)
-	go func() {
-		ctx, cancel := context.WithCancel(n.ctx)
-		defer cancel()
-		n.backoffConnector.Connect(ctx, discoveredPeers)
-	}()
 	err := tasks.Retry(func() error {
 		return n.disc.Bootstrap(logger, func(e discovery.PeerEvent) {
 			if !n.idx.CanConnect(e.AddrInfo.ID) {

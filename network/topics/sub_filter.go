@@ -16,7 +16,6 @@ type SubFilter interface {
 	// SubscriptionFilter allows controlling what topics the node will subscribe to
 	// otherwise it might subscribe to irrelevant topics that were suggested by other peers
 	pubsub.SubscriptionFilter
-	// Whitelist
 }
 
 type subFilter struct {

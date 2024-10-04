@@ -107,7 +107,7 @@ func (n *p2pNetwork) initCfg() error {
 	return nil
 }
 
-// Returns whetehr a peer is bad
+// IsBadPeer returns whether the given peer is bad
 func (n *p2pNetwork) IsBadPeer(logger *zap.Logger, peerID peer.ID) bool {
 	if n.idx == nil {
 		return false

@@ -74,10 +74,11 @@ func TestP2pNetwork_SubscribeBroadcast(t *testing.T) {
 	node1, node2 := ln.Nodes[1], ln.Nodes[2]
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
+
 		msgCommittee1 := generateCommitteeMsg(spectestingutils.Testing4SharesSet(), 1)
 		msgCommittee3 := generateCommitteeMsg(spectestingutils.Testing4SharesSet(), 3)
 		msgProposer := generateValidatorMsg(spectestingutils.Testing4SharesSet(), 4, spectypes.RoleProposer)
@@ -85,20 +86,19 @@ func TestP2pNetwork_SubscribeBroadcast(t *testing.T) {
 		msgRoleVoluntaryExit := generateValidatorMsg(spectestingutils.Testing4SharesSet(), 6, spectypes.RoleVoluntaryExit)
 
 		require.NoError(t, node1.Broadcast(msgCommittee1.SSVMessage.GetID(), msgCommittee1))
-		<-time.After(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 20)
 		require.NoError(t, node2.Broadcast(msgCommittee3.SSVMessage.GetID(), msgCommittee3))
-		<-time.After(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 20)
 		require.NoError(t, node2.Broadcast(msgCommittee1.SSVMessage.GetID(), msgCommittee1))
-		<-time.After(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 20)
 		require.NoError(t, node2.Broadcast(msgProposer.SSVMessage.GetID(), msgProposer))
-		<-time.After(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 20)
 		require.NoError(t, node2.Broadcast(msgSyncCommitteeContribution.SSVMessage.GetID(), msgSyncCommitteeContribution))
-		<-time.After(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 20)
 		require.NoError(t, node1.Broadcast(msgRoleVoluntaryExit.SSVMessage.GetID(), msgRoleVoluntaryExit))
 	}()
 
 	wg.Add(1)
-
 	go func() {
 		defer wg.Done()
 
@@ -109,11 +109,8 @@ func TestP2pNetwork_SubscribeBroadcast(t *testing.T) {
 		msgSyncCommitteeContribution := generateValidatorMsg(spectestingutils.Testing4SharesSet(), 5, spectypes.RoleSyncCommitteeContribution)
 		msgRoleVoluntaryExit := generateValidatorMsg(spectestingutils.Testing4SharesSet(), 6, spectypes.RoleVoluntaryExit)
 
-		require.NoError(t, err)
-
 		time.Sleep(time.Millisecond * 20)
 		require.NoError(t, node1.Broadcast(msgCommittee2.SSVMessage.GetID(), msgCommittee2))
-
 		time.Sleep(time.Millisecond * 20)
 		require.NoError(t, node2.Broadcast(msgCommittee1.SSVMessage.GetID(), msgCommittee1))
 		require.NoError(t, node1.Broadcast(msgCommittee3.SSVMessage.GetID(), msgCommittee3))
@@ -124,7 +121,7 @@ func TestP2pNetwork_SubscribeBroadcast(t *testing.T) {
 
 	wg.Wait()
 
-	// waiting for messages
+	// waiting for messages to actually show up at routers
 	wg.Add(1)
 	go func() {
 		ct, cancel := context.WithTimeout(ctx, time.Second*5)
@@ -136,6 +133,7 @@ func TestP2pNetwork_SubscribeBroadcast(t *testing.T) {
 			}
 		}
 	}()
+
 	wg.Wait()
 
 	for _, r := range routers {

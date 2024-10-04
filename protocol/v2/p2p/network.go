@@ -21,7 +21,6 @@ type Subscriber interface {
 	p2p.Subscriber
 	// Unsubscribe unsubscribes from the validator subnet
 	Unsubscribe(logger *zap.Logger, pk spectypes.ValidatorPK) error
-	// Peers returns the peers that are connected to the given validator
 }
 
 // Broadcaster enables to broadcast messages
