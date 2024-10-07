@@ -25,8 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 
-	"github.com/ssvlabs/ssv/utils/hashmap"
-
 	"github.com/ssvlabs/ssv/message/validation"
 	beaconprotocol "github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon"
 	"github.com/ssvlabs/ssv/protocol/v2/ssv/queue"
@@ -246,11 +244,10 @@ func TestP2pNetwork_MessageValidation(t *testing.T) {
 			index NodeIndex
 			score float64
 		}
-		peers := make([]peerScore, 0, node.PeerScores.SlowLen())
-		node.PeerScores.Range(func(index NodeIndex, snapshot *pubsub.PeerScoreSnapshot) bool {
+		peers := make([]peerScore, 0)
+		for index, snapshot := range *node.PeerScores.Load() {
 			peers = append(peers, peerScore{index, snapshot.Score})
-			return true
-		})
+		}
 		sort.Slice(peers, func(i, j int) bool {
 			return peers[i].score > peers[j].score
 		})
@@ -321,7 +318,7 @@ type NodeIndex int
 type VirtualNode struct {
 	Index      NodeIndex
 	Network    *p2pNetwork
-	PeerScores *hashmap.Map[NodeIndex, *pubsub.PeerScoreSnapshot]
+	PeerScores atomic.Pointer[map[NodeIndex]*pubsub.PeerScoreSnapshot]
 }
 
 func (n *VirtualNode) Broadcast(msgID spectypes.MessageID, msg *spectypes.SignedSSVMessage) error {
@@ -360,19 +357,16 @@ func CreateVirtualNet(
 				return
 			}
 
-			node.PeerScores.Range(func(index NodeIndex, snapshot *pubsub.PeerScoreSnapshot) bool {
-				node.PeerScores.Delete(index)
-				return true
-			})
+			peerScoresUpdated := make(map[NodeIndex]*pubsub.PeerScoreSnapshot, len(peerMap))
 			for peerID, peerScore := range peerMap {
 				peerNode := vn.NodeByPeerID(peerID)
 				if peerNode == nil {
 					t.Fatalf("peer not found (%s)", peerID)
 					return
 				}
-				node.PeerScores.Set(peerNode.Index, peerScore)
+				peerScoresUpdated[peerNode.Index] = peerScore
 			}
-
+			node.PeerScores.Store(&peerScoresUpdated)
 		},
 		PeerScoreInspectorInterval: time.Millisecond * 5,
 		Shares:                     shares,
@@ -384,9 +378,8 @@ func CreateVirtualNet(
 
 	for i, node := range ln.Nodes {
 		vn.Nodes = append(vn.Nodes, &VirtualNode{
-			Index:      NodeIndex(i),
-			Network:    node.(*p2pNetwork),
-			PeerScores: hashmap.New[NodeIndex, *pubsub.PeerScoreSnapshot](), //{}make(map[NodeIndex]*pubsub.PeerScoreSnapshot),
+			Index:   NodeIndex(i),
+			Network: node.(*p2pNetwork),
 		})
 	}
 	doneSetup.Store(true)
