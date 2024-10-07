@@ -81,7 +81,7 @@ func New(logger *zap.Logger, opts Options, slotTickerProvider slotticker.Provide
 		net:              opts.P2PNetwork,
 		storage:          opts.ValidatorOptions.RegistryStorage,
 		qbftStorage:      qbftStorage,
-		dutyScheduler: duties.NewScheduler(&duties.SchedulerOptions{
+		dutyScheduler: duties.NewScheduler(logger, &duties.SchedulerOptions{
 			Ctx:                 opts.Context,
 			BeaconNode:          opts.BeaconNode,
 			ExecutionClient:     opts.ExecutionClient,

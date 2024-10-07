@@ -66,6 +66,20 @@ func (mr *MockdutyHandlerMockRecorder) HandleInitialDuties(arg0 any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleInitialDuties", reflect.TypeOf((*MockdutyHandler)(nil).HandleInitialDuties), arg0)
 }
 
+// IndicesChangeFeed mocks base method.
+func (m *MockdutyHandler) IndicesChangeFeed() chan struct{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IndicesChangeFeed")
+	ret0, _ := ret[0].(chan struct{})
+	return ret0
+}
+
+// IndicesChangeFeed indicates an expected call of IndicesChangeFeed.
+func (mr *MockdutyHandlerMockRecorder) IndicesChangeFeed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndicesChangeFeed", reflect.TypeOf((*MockdutyHandler)(nil).IndicesChangeFeed))
+}
+
 // Name mocks base method.
 func (m *MockdutyHandler) Name() string {
 	m.ctrl.T.Helper()
@@ -80,14 +94,28 @@ func (mr *MockdutyHandlerMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockdutyHandler)(nil).Name))
 }
 
-// Setup mocks base method.
-func (m *MockdutyHandler) Setup(name string, logger *zap.Logger, beaconNode BeaconNode, executionClient ExecutionClient, network networkconfig.NetworkConfig, validatorProvider ValidatorProvider, validatorController ValidatorController, dutiesExecutor DutiesExecutor, slotTickerProvider slotticker.Provider, reorgEvents chan ReorgEvent, indicesChange chan struct{}) {
+// ReorgFeed mocks base method.
+func (m *MockdutyHandler) ReorgFeed() chan ReorgEvent {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Setup", name, logger, beaconNode, executionClient, network, validatorProvider, validatorController, dutiesExecutor, slotTickerProvider, reorgEvents, indicesChange)
+	ret := m.ctrl.Call(m, "ReorgFeed")
+	ret0, _ := ret[0].(chan ReorgEvent)
+	return ret0
+}
+
+// ReorgFeed indicates an expected call of ReorgFeed.
+func (mr *MockdutyHandlerMockRecorder) ReorgFeed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReorgFeed", reflect.TypeOf((*MockdutyHandler)(nil).ReorgFeed))
+}
+
+// Setup mocks base method.
+func (m *MockdutyHandler) Setup(name string, logger *zap.Logger, beaconNode BeaconNode, executionClient ExecutionClient, network networkconfig.NetworkConfig, validatorProvider ValidatorProvider, validatorController ValidatorController, dutiesExecutor DutiesExecutor, slotTickerProvider slotticker.Provider) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Setup", name, logger, beaconNode, executionClient, network, validatorProvider, validatorController, dutiesExecutor, slotTickerProvider)
 }
 
 // Setup indicates an expected call of Setup.
-func (mr *MockdutyHandlerMockRecorder) Setup(name, logger, beaconNode, executionClient, network, validatorProvider, validatorController, dutiesExecutor, slotTickerProvider, reorgEvents, indicesChange any) *gomock.Call {
+func (mr *MockdutyHandlerMockRecorder) Setup(name, logger, beaconNode, executionClient, network, validatorProvider, validatorController, dutiesExecutor, slotTickerProvider any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Setup", reflect.TypeOf((*MockdutyHandler)(nil).Setup), name, logger, beaconNode, executionClient, network, validatorProvider, validatorController, dutiesExecutor, slotTickerProvider, reorgEvents, indicesChange)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Setup", reflect.TypeOf((*MockdutyHandler)(nil).Setup), name, logger, beaconNode, executionClient, network, validatorProvider, validatorController, dutiesExecutor, slotTickerProvider)
 }

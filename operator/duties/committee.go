@@ -70,22 +70,34 @@ func (h *CommitteeHandler) HandleDuties(ctx context.Context) {
 			h.processExecution(period, epoch, slot)
 
 		case <-h.reorg:
+			h.logger.Debug("🛠 reorg event")
 			// do nothing
 
 		case <-h.indicesChange:
+			h.logger.Debug("🛠 indicesChange event")
 			// do nothing
 		}
 	}
 }
 
 func (h *CommitteeHandler) processExecution(period uint64, epoch phase0.Epoch, slot phase0.Slot) {
+	h.logger.Debug(fmt.Sprintf("processExecution: epoch=%d, slot=%d", epoch, slot))
+
 	attDuties := h.attDuties.CommitteeSlotDuties(epoch, slot)
 	syncDuties := h.syncDuties.CommitteePeriodDuties(period)
-	if attDuties == nil && syncDuties == nil {
-		return
-	}
+	// TODO
+	//if attDuties == nil && syncDuties == nil {
+	//	return
+	//}
+
+	// TODO
+	h.logger.Debug(fmt.Sprintf("processExecution: before buildCommitteeDuties, epoch=%d, slot=%d", epoch, slot))
 
 	committeeMap := h.buildCommitteeDuties(attDuties, syncDuties, epoch, slot)
+
+	// TODO
+	h.logger.Debug(fmt.Sprintf("processExecution: after buildCommitteeDuties, len(committeeMap) = %d", len(committeeMap)))
+
 	h.dutiesExecutor.ExecuteCommitteeDuties(h.logger, committeeMap)
 }
 

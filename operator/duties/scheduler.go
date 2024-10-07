@@ -130,7 +130,7 @@ type Scheduler struct {
 	previousDutyDependentRoot phase0.Root
 }
 
-func NewScheduler(opts *SchedulerOptions) *Scheduler {
+func NewScheduler(logger *zap.Logger, opts *SchedulerOptions) *Scheduler {
 	dutyStore := opts.DutyStore
 	if dutyStore == nil {
 		dutyStore = dutystore.New()
@@ -161,6 +161,20 @@ func NewScheduler(opts *SchedulerOptions) *Scheduler {
 		waitCond: sync.NewCond(&sync.Mutex{}),
 	}
 
+	for _, handler := range s.handlers {
+		handler.Setup(
+			handler.Name(),
+			logger,
+			s.beaconNode,
+			s.executionClient,
+			s.network,
+			s.validatorProvider,
+			s.validatorController,
+			s,
+			s.slotTickerProvider,
+		)
+	}
+
 	return s
 }
 
@@ -189,24 +203,8 @@ func (s *Scheduler) Start(ctx context.Context, logger *zap.Logger) error {
 	reorgFeed := NewEventFeed[ReorgEvent]()
 
 	for _, handler := range s.handlers {
-		indicesChangeCh := make(chan struct{})
-		indicesChangeFeed.Subscribe(indicesChangeCh)
-		reorgCh := make(chan ReorgEvent)
-		reorgFeed.Subscribe(reorgCh)
-
-		handler.Setup(
-			handler.Name(),
-			logger,
-			s.beaconNode,
-			s.executionClient,
-			s.network,
-			s.validatorProvider,
-			s.validatorController,
-			s,
-			s.slotTickerProvider,
-			reorgCh,
-			indicesChangeCh,
-		)
+		indicesChangeFeed.Subscribe(handler.IndicesChangeFeed())
+		reorgFeed.Subscribe(handler.ReorgFeed())
 
 		// This call is blocking.
 		handler.HandleInitialDuties(ctx)
@@ -219,7 +217,8 @@ func (s *Scheduler) Start(ctx context.Context, logger *zap.Logger) error {
 		})
 	}
 
-	go s.SlotTicker(ctx)
+	// TODO
+	//go s.SlotTicker(ctx)
 
 	go indicesChangeFeed.FanOut(ctx, s.indicesChg)
 	go reorgFeed.FanOut(ctx, s.reorg)
@@ -276,16 +275,15 @@ func (s *Scheduler) SlotTicker(ctx context.Context) {
 			delay := s.network.SlotDurationSec() / casts.DurationFromUint64(goclient.IntervalsPerSlot) /* a third of the slot duration */
 			finalTime := s.network.Beacon.GetSlotStartTime(slot).Add(delay)
 			waitDuration := time.Until(finalTime)
-
 			if waitDuration > 0 {
 				time.Sleep(waitDuration)
-
-				// Lock the mutex before broadcasting
-				s.waitCond.L.Lock()
-				s.headSlot = slot
-				s.waitCond.Broadcast()
-				s.waitCond.L.Unlock()
 			}
+
+			// Lock the mutex before broadcasting
+			s.waitCond.L.Lock()
+			s.headSlot = slot
+			s.waitCond.Broadcast()
+			s.waitCond.L.Unlock()
 		}
 	}
 }
@@ -300,7 +298,8 @@ func (s *Scheduler) HandleHeadEvent(logger *zap.Logger) func(event *eth2apiv1.Ev
 		var zeroRoot phase0.Root
 
 		data := event.Data.(*eth2apiv1.HeadEvent)
-		if data.Slot != s.network.Beacon.EstimatedCurrentSlot() {
+		// TODO comment & add a log
+		if data.Slot < s.network.Beacon.EstimatedCurrentSlot() {
 			return
 		}
 
@@ -426,6 +425,7 @@ func (s *Scheduler) ExecuteCommitteeDuties(logger *zap.Logger, duties committeeD
 		}
 		slotDelayHistogram.Observe(float64(slotDelay.Milliseconds()))
 		go func() {
+			// TODO
 			s.waitOneThirdOrValidBlock(duty.Slot)
 			s.dutyExecutor.ExecuteCommitteeDuty(logger, committee.id, duty)
 		}()

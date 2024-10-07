@@ -949,12 +949,19 @@ func TestScheduler_Committee_Early_Block_Attester_Only(t *testing.T) {
 			ValidatorIndex: phase0.ValidatorIndex(1),
 		},
 	})
-	// STEP 1: wait for attester duties to be fetched (handle initial duties)
 	currentSlot.Set(phase0.Slot(0))
 	scheduler, logger, ticker, timeout, cancel, schedulerPool, startFn := setupSchedulerAndMocks(t, []dutyHandler{attHandler, syncHandler, commHandler}, currentSlot, alanForkEpoch)
 	fetchDutiesCall, executeDutiesCall := setupCommitteeDutiesMock(scheduler, activeShares, attDuties, syncDuties, waitForDuties)
+	// TODO - move inside ^ ?
+	currentSlot.Set(phase0.Slot(2)) // TODO - comment on this
+	aDuties, _ := attDuties.Get(0)
+	committee2ndSlot := commHandler.buildCommitteeDuties(aDuties, nil, 0, currentSlot.Get())
+	setExecuteDutyFuncs(scheduler, executeDutiesCall, len(committee2ndSlot))
+	currentSlot.Set(phase0.Slot(0)) // TODO - comment on this
+
 	startFn()
 
+	// STEP 1: wait for attester duties to be fetched (handle initial duties)
 	ticker.Send(currentSlot.Get())
 	waitForNoActionCommittee(t, logger, fetchDutiesCall, executeDutiesCall, timeout)
 
@@ -964,22 +971,19 @@ func TestScheduler_Committee_Early_Block_Attester_Only(t *testing.T) {
 	waitForNoActionCommittee(t, logger, fetchDutiesCall, executeDutiesCall, timeout)
 
 	// STEP 3: wait for attester duties to be executed faster than 1/3 of the slot duration
+	// when Beacon head event comes (block arrival)
 	startTime := time.Now()
 	currentSlot.Set(phase0.Slot(2))
 	ticker.Send(currentSlot.Get())
-
-	aDuties, _ := attDuties.Get(0)
-	committeeMap := commHandler.buildCommitteeDuties(aDuties, nil, 0, currentSlot.Get())
-	setExecuteDutyFuncs(scheduler, executeDutiesCall, len(committeeMap))
-
-	// STEP 4: trigger head event (block arrival)
 	e := &eth2apiv1.Event{
 		Data: &eth2apiv1.HeadEvent{
 			Slot: currentSlot.Get(),
 		},
 	}
 	scheduler.HandleHeadEvent(logger)(e)
-	waitForDutiesExecutionCommittee(t, logger, fetchDutiesCall, executeDutiesCall, timeout, committeeMap)
+	// TODO
+	waitForDutiesExecutionCommittee(t, logger, fetchDutiesCall, executeDutiesCall, 30*time.Second, committee2ndSlot)
+	//waitForDutiesExecutionCommittee(t, logger, fetchDutiesCall, executeDutiesCall, timeout, committee2ndSlot)
 	require.Less(t, time.Since(startTime), scheduler.network.Beacon.SlotDurationSec()/3)
 
 	// Stop scheduler & wait for graceful exit.

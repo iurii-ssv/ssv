@@ -2,6 +2,8 @@ package duties
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -94,7 +96,9 @@ func setupSchedulerAndMocks(t *testing.T, handlers []dutyHandler, currentSlot *S
 	mockValidatorProvider := NewMockValidatorProvider(ctrl)
 	mockValidatorController := NewMockValidatorController(ctrl)
 	mockDutyExecutor := NewMockDutyExecutor(ctrl)
+	ticker := NewMockSlotTicker()
 	mockSlotService := &mockSlotTickerService{}
+	mockSlotService.Subscribe(ticker.Subscribe())
 	mockNetworkConfig := networkconfig.NetworkConfig{
 		Beacon:        mocknetwork.NewMockBeaconNetwork(ctrl),
 		AlanForkEpoch: alanForkEpoch,
@@ -109,16 +113,27 @@ func setupSchedulerAndMocks(t *testing.T, handlers []dutyHandler, currentSlot *S
 		ValidatorController: mockValidatorController,
 		DutyExecutor:        mockDutyExecutor,
 		SlotTickerProvider: func() slotticker.SlotTicker {
-			ticker := NewMockSlotTicker()
-			mockSlotService.Subscribe(ticker.Subscribe())
 			return ticker
 		},
 	}
 
-	s := NewScheduler(opts)
+	s := NewScheduler(logger, opts)
 	s.blockPropagateDelay = 1 * time.Millisecond
 	s.indicesChg = make(chan struct{})
 	s.handlers = handlers
+	for _, handler := range s.handlers {
+		handler.Setup(
+			handler.Name(),
+			logger,
+			s.beaconNode,
+			s.executionClient,
+			s.network,
+			s.validatorProvider,
+			s.validatorController,
+			s,
+			s.slotTickerProvider,
+		)
+	}
 
 	mockBeaconNode.EXPECT().Events(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
@@ -218,19 +233,22 @@ func setExecuteGenesisDutyFunc(s *Scheduler, executeDutiesCall chan []*genesissp
 func setExecuteDutyFuncs(s *Scheduler, executeDutiesCall chan committeeDutiesMap, executeDutiesCallSize int) {
 	executeDutiesBuffer := make(chan *committeeDuty, executeDutiesCallSize)
 
-	s.dutyExecutor.(*MockDutyExecutor).EXPECT().ExecuteDuty(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
-		func(logger *zap.Logger, duty *spectypes.ValidatorDuty) error {
-			logger.Debug("🏃 Executing duty", zap.Any("duty", duty))
-			return nil
-		},
-	).AnyTimes()
+	// TODO
+	//s.dutyExecutor.(*MockDutyExecutor).EXPECT().ExecuteDuty(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
+	//	func(logger *zap.Logger, duty *spectypes.ValidatorDuty) error {
+	//		logger.Debug("🏃 Executing duty", zap.Any("duty", duty))
+	//		return nil
+	//	},
+	//).AnyTimes()
 
 	s.dutyExecutor.(*MockDutyExecutor).EXPECT().ExecuteCommitteeDuty(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
 		func(logger *zap.Logger, committeeID spectypes.CommitteeID, duty *spectypes.CommitteeDuty) {
 			logger.Debug("🏃 Executing committee duty", zap.Any("duty", duty))
 			executeDutiesBuffer <- &committeeDuty{id: committeeID, duty: duty}
 
-			// Check if all expected duties have been received
+			// Check if all expected duties have been received (note, this is thread-safe to do it
+			// this way here because mock method calls are executed under mutex, otherwise this
+			// block of code below could execute 2 or more times in parallel)
 			if len(executeDutiesBuffer) == executeDutiesCallSize {
 				// Build the array of duties
 				duties := make(committeeDutiesMap)
@@ -372,7 +390,7 @@ func waitForDutiesExecutionCommittee(t *testing.T, logger *zap.Logger, fetchDuti
 		for eCommitteeID, eCommDuty := range expectedDuties {
 			aCommDuty, ok := actualDuties[eCommitteeID]
 			if !ok {
-				require.FailNow(t, "missing cluster id")
+				require.FailNow(t, fmt.Sprintf("expected to get actual duty with committee ID: %s", hex.EncodeToString(eCommitteeID[:])))
 			}
 			require.Len(t, aCommDuty.duty.ValidatorDuties, len(eCommDuty.duty.ValidatorDuties))
 
@@ -440,7 +458,7 @@ func TestScheduler_Run(t *testing.T) {
 		},
 	}
 
-	s := NewScheduler(opts)
+	s := NewScheduler(logger, opts)
 	// add multiple mock duty handlers
 	s.handlers = []dutyHandler{mockDutyHandler1, mockDutyHandler2}
 
@@ -449,7 +467,7 @@ func TestScheduler_Run(t *testing.T) {
 
 	// setup mock duty handler expectations
 	for _, mockDutyHandler := range s.handlers {
-		mockDutyHandler.(*MockdutyHandler).EXPECT().Setup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+		mockDutyHandler.(*MockdutyHandler).EXPECT().Setup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 		mockDutyHandler.(*MockdutyHandler).EXPECT().HandleDuties(gomock.Any()).
 			DoAndReturn(func(ctx context.Context) {
 				<-ctx.Done()
@@ -489,7 +507,7 @@ func TestScheduler_Regression_IndicesChangeStuck(t *testing.T) {
 		IndicesChg: make(chan struct{}),
 	}
 
-	s := NewScheduler(opts)
+	s := NewScheduler(logger, opts)
 
 	// add multiple mock duty handlers
 	s.handlers = []dutyHandler{NewValidatorRegistrationHandler()}

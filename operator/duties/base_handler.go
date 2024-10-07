@@ -2,7 +2,6 @@ package duties
 
 import (
 	"context"
-
 	"go.uber.org/zap"
 
 	"github.com/ssvlabs/ssv/networkconfig"
@@ -22,12 +21,12 @@ type dutyHandler interface {
 		validatorController ValidatorController,
 		dutiesExecutor DutiesExecutor,
 		slotTickerProvider slotticker.Provider,
-		reorgEvents chan ReorgEvent,
-		indicesChange chan struct{},
 	)
 	HandleDuties(context.Context)
 	HandleInitialDuties(context.Context)
 	Name() string
+	IndicesChangeFeed() chan struct{}
+	ReorgFeed() chan ReorgEvent
 }
 
 type baseHandler struct {
@@ -56,8 +55,6 @@ func (h *baseHandler) Setup(
 	validatorController ValidatorController,
 	dutiesExecutor DutiesExecutor,
 	slotTickerProvider slotticker.Provider,
-	reorgEvents chan ReorgEvent,
-	indicesChange chan struct{},
 ) {
 	h.logger = logger.With(zap.String("handler", name))
 	h.beaconNode = beaconNode
@@ -67,8 +64,8 @@ func (h *baseHandler) Setup(
 	h.validatorController = validatorController
 	h.dutiesExecutor = dutiesExecutor
 	h.ticker = slotTickerProvider()
-	h.reorg = reorgEvents
-	h.indicesChange = indicesChange
+	h.reorg = make(chan ReorgEvent)
+	h.indicesChange = make(chan struct{})
 }
 
 func (h *baseHandler) warnMisalignedSlotAndDuty(dutyType string) {
@@ -78,4 +75,12 @@ func (h *baseHandler) warnMisalignedSlotAndDuty(dutyType string) {
 
 func (h *baseHandler) HandleInitialDuties(context.Context) {
 	// Do nothing
+}
+
+func (h *baseHandler) IndicesChangeFeed() chan struct{} {
+	return h.indicesChange
+}
+
+func (h *baseHandler) ReorgFeed() chan ReorgEvent {
+	return h.reorg
 }
