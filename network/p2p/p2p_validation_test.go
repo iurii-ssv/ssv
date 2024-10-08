@@ -5,6 +5,7 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"math/rand"
 	"os"
 	"sort"
@@ -68,7 +69,7 @@ func TestP2pNetwork_MessageValidation(t *testing.T) {
 			Ignored:  make([]int, nodeCount),
 			Rejected: make([]int, nodeCount),
 		}
-		messageValidators[i].ValidateFunc = func(ctx context.Context, p peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
+		messageValidators[i].ValidateFunc = func(ctx context.Context, pID peer.ID, pmsg *pubsub.Message) pubsub.ValidationResult {
 			signedSSVMessage := &spectypes.SignedSSVMessage{}
 			if err := signedSSVMessage.Decode(pmsg.GetData()); err != nil {
 				return pubsub.ValidationReject
@@ -104,22 +105,30 @@ func TestP2pNetwork_MessageValidation(t *testing.T) {
 				Body:             body,
 			}
 
-			peer := vNet.NodeByPeerID(p)
+			p := vNet.NodeByPeerID(pID)
+			// TODO - print out message itself to understand what it even is
+			if p == nil {
+				// TODO
+				fmt.Printf("peer not found, peer: %s:", pID)
+				fmt.Printf("message: %s:", spew.Sdump(pmsg))
+				fmt.Printf("decoded body: %s:", spew.Sdump(body))
+				return pubsub.ValidationReject
+			}
 
 			mtx.Lock()
 			// Validation according to role.
 			var validation pubsub.ValidationResult
 			switch ssvMessage.MsgID.GetRoleType() {
 			case acceptedRole:
-				messageValidators[i].Accepted[peer.Index]++
+				messageValidators[i].Accepted[p.Index]++
 				messageValidators[i].TotalAccepted++
 				validation = pubsub.ValidationAccept
 			case ignoredRole:
-				messageValidators[i].Ignored[peer.Index]++
+				messageValidators[i].Ignored[p.Index]++
 				messageValidators[i].TotalIgnored++
 				validation = pubsub.ValidationIgnore
 			case rejectedRole:
-				messageValidators[i].Rejected[peer.Index]++
+				messageValidators[i].Rejected[p.Index]++
 				messageValidators[i].TotalRejected++
 				validation = pubsub.ValidationReject
 			default:
@@ -129,7 +138,7 @@ func TestP2pNetwork_MessageValidation(t *testing.T) {
 
 			// Always accept messages from self to make libp2p propagate them,
 			// while still counting them by their role.
-			if p == vNet.Nodes[i].Network.Host().ID() {
+			if pID == vNet.Nodes[i].Network.Host().ID() {
 				return pubsub.ValidationAccept
 			}
 
