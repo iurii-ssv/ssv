@@ -13,4 +13,6 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
+EXPOSE 6060
+
 COPY . .

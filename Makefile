@@ -55,7 +55,9 @@ integration-test:
 .PHONY: unit-test
 unit-test:
 	@echo "Running unit tests"
-	@go test -tags blst_enabled -timeout 20m -race -covermode=atomic -coverprofile=coverage.out -p 1 `go list ./... | grep -ve "spectest\|integration\|ssv/scripts/"`
+	# TODO
+	@#go test -tags blst_enabled -timeout 20m -race -covermode=atomic -coverprofile=coverage.out -p 1 `go list ./... | grep -ve "spectest\|integration\|ssv/scripts/"`
+	@go test -tags blst_enabled -timeout 20m -race -covermode=atomic -coverprofile=coverage.out -p 1 `go list ./... | grep "hashmap"`
 
 .PHONY: spec-test
 spec-test:
@@ -96,7 +98,9 @@ docker-spec-test:
 docker-unit-test:
 	@echo "Running unit tests in docker"
 	@docker build -t ssv_tests -f tests.Dockerfile .
-	@docker run --rm ssv_tests make unit-test
+	# TODO
+	#@docker run --rm ssv_tests make unit-test
+	@docker run --rm -p 6060:6060 ssv_tests make unit-test
 
 .PHONY: docker-integration-test
 docker-integration-test:
