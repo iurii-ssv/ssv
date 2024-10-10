@@ -7,7 +7,6 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/pkg/errors"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
-
 	"github.com/ssvlabs/ssv/protocol/v2/qbft/instance"
 	"github.com/ssvlabs/ssv/protocol/v2/ssv"
 )
@@ -16,12 +15,16 @@ import (
 type State struct {
 	PreConsensusContainer  *ssv.PartialSigContainer
 	PostConsensusContainer *ssv.PartialSigContainer
-	RunningInstance        *instance.Instance
-	DecidedValue           []byte //spectypes.Encoder
+	// TODO - this seems to be modified constantly (a problem if we want to access it concurrently)
+	RunningInstance *instance.Instance
+	// TODO - this seems to be modified constantly (a problem if we want to access it concurrently)
+	DecidedValue []byte //spectypes.Encoder
 	// CurrentDuty is the duty the node pulled locally from the beacon node, might be different from decided duty
 	StartingDuty spectypes.Duty `json:"StartingDuty,omitempty"`
 	// flags
-	Finished bool // Finished marked true when there is a full successful cycle (pre, consensus and post) with quorum
+	// TODO - this seems to be modified constantly (a problem if we want to access it concurrently)
+	// Finished marked true when there is a full successful cycle (pre, consensus and post) with quorum
+	Finished bool
 }
 
 func NewRunnerState(quorum uint64, duty spectypes.Duty) *State {
@@ -99,7 +102,6 @@ func (pcs *State) MarshalJSON() ([]byte, error) {
 }
 
 func (pcs *State) UnmarshalJSON(data []byte) error {
-
 	// Create alias without duty
 	type StateAlias struct {
 		PreConsensusContainer  *ssv.PartialSigContainer

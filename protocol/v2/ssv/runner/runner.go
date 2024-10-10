@@ -9,12 +9,11 @@ import (
 	"github.com/pkg/errors"
 	specqbft "github.com/ssvlabs/ssv-spec/qbft"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon"
 	"github.com/ssvlabs/ssv/protocol/v2/qbft/controller"
 	"github.com/ssvlabs/ssv/protocol/v2/ssv"
 	ssvtypes "github.com/ssvlabs/ssv/protocol/v2/types"
+	"go.uber.org/zap"
 )
 
 type Getters interface {
@@ -52,8 +51,10 @@ type Runner interface {
 var _ Runner = new(CommitteeRunner)
 
 type BaseRunner struct {
-	mtx            sync.RWMutex
-	State          *State
+	// mtx syncs access to State.
+	mtx   sync.RWMutex
+	State *State
+
 	Share          map[phase0.ValidatorIndex]*spectypes.Share
 	QBFTController *controller.Controller
 	DomainType     spectypes.DomainType
@@ -108,36 +109,15 @@ func (b *BaseRunner) SetHighestDecidedSlot(slot phase0.Slot) {
 
 // setupForNewDuty is sets the runner for a new duty
 func (b *BaseRunner) baseSetupForNewDuty(duty spectypes.Duty, quorum uint64) {
-	// start new state
-	// start new state
 	// TODO nicer way to get quorum
 	state := NewRunnerState(quorum, duty)
 
-	// TODO: potentially incomplete locking of b.State. runner.Execute(duty) has access to
-	// b.State but currently does not write to it
 	b.mtx.Lock() // writes to b.State
 	b.State = state
 	b.mtx.Unlock()
-}
-
-func NewBaseRunner(
-	state *State,
-	share map[phase0.ValidatorIndex]*spectypes.Share,
-	controller *controller.Controller,
-	domainType spectypes.DomainType,
-	beaconNetwork spectypes.BeaconNetwork,
-	runnerRoleType spectypes.RunnerRole,
-	highestDecidedSlot phase0.Slot,
-) *BaseRunner {
-	return &BaseRunner{
-		State:              state,
-		Share:              share,
-		QBFTController:     controller,
-		BeaconNetwork:      beaconNetwork,
-		DomainType:         domainType,
-		RunnerRoleType:     runnerRoleType,
-		highestDecidedSlot: highestDecidedSlot,
-	}
+	// TODO ^ make atomic ref (returned via State() method) ? Nope, looks like there are
+	//  different kinds of state modifications done in different Runner(s) ... so we want
+	//  to keep and use this mtx to have consistent view over State at any point in time
 }
 
 // baseStartNewDuty is a base func that all runner implementation can call to start a duty

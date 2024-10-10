@@ -14,14 +14,13 @@ import (
 	"github.com/prysmaticlabs/go-bitfield"
 	specqbft "github.com/ssvlabs/ssv-spec/qbft"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv/logging/fields"
 	"github.com/ssvlabs/ssv/networkconfig"
 	"github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon"
 	"github.com/ssvlabs/ssv/protocol/v2/qbft/controller"
 	"github.com/ssvlabs/ssv/protocol/v2/ssv/runner/metrics"
 	ssvtypes "github.com/ssvlabs/ssv/protocol/v2/types"
+	"go.uber.org/zap"
 )
 
 var (
@@ -42,6 +41,10 @@ type CommitteeRunner struct {
 	valCheck       specqbft.ProposedValueCheckF
 	DutyGuard      CommitteeDutyGuard
 
+	// submittedDuties keeps track of already submitted duties to avoid submitting those
+	// again (although it's safe to do - it's unnecessary overhead). Since CommitteeRunner
+	// is meant to process events on the same go-routine there is no need to worry about
+	// concurrent reads/writes to submittedDuties.
 	submittedDuties map[spectypes.BeaconRole]map[phase0.ValidatorIndex]struct{}
 
 	started time.Time
@@ -93,13 +96,7 @@ func (cr *CommitteeRunner) StartNewDuty(logger *zap.Logger, duty spectypes.Duty,
 				validatorDuty.Type, d.DutySlot(), validatorDuty.PubKey, err)
 		}
 	}
-	err := cr.BaseRunner.baseStartNewDuty(logger, cr, duty, quorum)
-	if err != nil {
-		return err
-	}
-	cr.submittedDuties[spectypes.BNRoleAttester] = make(map[phase0.ValidatorIndex]struct{})
-	cr.submittedDuties[spectypes.BNRoleSyncCommittee] = make(map[phase0.ValidatorIndex]struct{})
-	return nil
+	return cr.BaseRunner.baseStartNewDuty(logger, cr, duty, quorum)
 }
 
 func (cr *CommitteeRunner) Encode() ([]byte, error) {
@@ -563,13 +560,13 @@ func findValidators(
 }
 
 // Unneeded since no preconsensus phase
-func (cr CommitteeRunner) expectedPreConsensusRootsAndDomain() ([]ssz.HashRoot, phase0.DomainType, error) {
+func (cr *CommitteeRunner) expectedPreConsensusRootsAndDomain() ([]ssz.HashRoot, phase0.DomainType, error) {
 	return nil, spectypes.DomainError, errors.New("no pre consensus root for committee runner")
 }
 
 // This function signature returns only one domain type... but we can have mixed domains
 // instead we rely on expectedPostConsensusRootsAndBeaconObjects that is called later
-func (cr CommitteeRunner) expectedPostConsensusRootsAndDomain() ([]ssz.HashRoot, phase0.DomainType, error) {
+func (cr *CommitteeRunner) expectedPostConsensusRootsAndDomain() ([]ssz.HashRoot, phase0.DomainType, error) {
 	return nil, spectypes.DomainError, errors.New("expected post consensus roots function is unused")
 }
 
