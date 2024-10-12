@@ -11,14 +11,12 @@ import (
 	"time"
 
 	"github.com/attestantio/go-eth2-client/spec/phase0"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv-spec/types"
 	operatordatastore "github.com/ssvlabs/ssv/operator/datastore"
-	"github.com/ssvlabs/ssv/operator/slotticker"
 	"github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon"
 	registrystorage "github.com/ssvlabs/ssv/registry/storage"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestTimeouts(t *testing.T) {
@@ -105,8 +103,8 @@ func mockClient(t *testing.T, ctx context.Context, serverURL string, commonTimeo
 			LongTimeout:    longTimeout,
 		},
 		operatordatastore.New(&registrystorage.OperatorData{ID: 1}),
-		func() slotticker.SlotTicker {
-			return slotticker.New(zap.NewNop(), slotticker.Config{
+		func() slotoracle.SlotOracle {
+			return slotoracle.New(zap.NewNop(), slotoracle.Config{
 				SlotDuration: 12 * time.Second,
 				GenesisTime:  time.Now(),
 			})

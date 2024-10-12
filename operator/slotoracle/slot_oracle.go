@@ -1,4 +1,4 @@
-package slotticker
+package slotoracle
 
 import (
 	"time"
@@ -8,21 +8,21 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate mockgen -package=mocks -destination=./mocks/slotticker.go -source=./slotticker.go
+//go:generate mockgen -package=mocks -destination=./mocks/slot_oracle.go -source=./slot_oracle.go
 
-type Provider func() SlotTicker
+type Provider func() SlotOracle
 
-// SlotTicker provides a way to keep track of Ethereum slots as they change over time.
-type SlotTicker interface {
-	// Next advances SlotTicker slot number (which keeps track of the "freshest" slot value
+// SlotOracle provides a way to keep track of Ethereum slots as they change over time.
+type SlotOracle interface {
+	// Next advances SlotOracle slot number (which keeps track of the "freshest" slot value
 	// from Ethereum perspective) potentially jumping several slots ahead. It returns a channel
 	// that will relay 1 tick signalling that "freshest" slot has started.
 	// Note: The caller is RESPONSIBLE for calling Next method periodically in order for
-	// SlotTicker to advance forward (to keep ticking) to newer slots.
+	// SlotOracle to advance forward (to keep ticking) to newer slots.
 	Next() <-chan time.Time
-	// Slot returns the next slot number SlotTicker will tick on.
+	// Slot returns the next slot number SlotOracle will tick on.
 	// Note: The caller is RESPONSIBLE for calling Next method periodically in order for
-	// SlotTicker to advance forward (to keep ticking).
+	// SlotOracle to advance forward (to keep ticking).
 	Slot() phase0.Slot
 }
 
@@ -31,10 +31,10 @@ type Config struct {
 	GenesisTime  time.Time
 }
 
-// slotTicker implements SlotTicker.
+// slotOracle implements SlotOracle.
 // Note: this implementation is NOT THREAD-SAFE, hence it all its methods should be called
 // in a serialized fashion (concurrent calls can result in unexpected behavior).
-type slotTicker struct {
+type slotOracle struct {
 	logger       *zap.Logger
 	timer        Timer
 	slotDuration time.Duration
@@ -42,12 +42,12 @@ type slotTicker struct {
 	slot         phase0.Slot
 }
 
-// New returns a goroutine-free SlotTicker implementation which is not thread-safe.
-func New(logger *zap.Logger, cfg Config) *slotTicker {
+// New returns a goroutine-free SlotOracle implementation which is not thread-safe.
+func New(logger *zap.Logger, cfg Config) *slotOracle {
 	return newWithCustomTimer(logger, cfg, NewTimer)
 }
 
-func newWithCustomTimer(logger *zap.Logger, cfg Config, timerProvider TimerProvider) *slotTicker {
+func newWithCustomTimer(logger *zap.Logger, cfg Config, timerProvider TimerProvider) *slotOracle {
 	timeSinceGenesis := time.Since(cfg.GenesisTime)
 
 	var (
@@ -65,7 +65,7 @@ func newWithCustomTimer(logger *zap.Logger, cfg Config, timerProvider TimerProvi
 		initialSlot = phase0.Slot(slotsSinceGenesis)
 	}
 
-	return &slotTicker{
+	return &slotOracle{
 		logger:       logger,
 		timer:        timerProvider(initialDelay),
 		slotDuration: cfg.SlotDuration,
@@ -74,12 +74,12 @@ func newWithCustomTimer(logger *zap.Logger, cfg Config, timerProvider TimerProvi
 	}
 }
 
-// Next implements SlotTicker.Next.
+// Next implements SlotOracle.Next.
 // Note: this method is not thread-safe.
-func (s *slotTicker) Next() <-chan time.Time {
+func (s *slotOracle) Next() <-chan time.Time {
 	timeSinceGenesis := time.Since(s.genesisTime)
 	if timeSinceGenesis < 0 {
-		// We are waiting for slotTicker to tick at s.genesisTime (signalling 0th slot start).
+		// We are waiting for slotOracle to tick at s.genesisTime (signalling 0th slot start).
 		return s.timer.C()
 	}
 	if !s.timer.Stop() {
@@ -93,7 +93,7 @@ func (s *slotTicker) Next() <-chan time.Time {
 	if nextSlot <= s.slot {
 		// We've already ticked for this slot, so we need to wait for the next one.
 		nextSlot = s.slot + 1
-		s.logger.Debug("slotTicker: double tick", zap.Uint64("slot", uint64(s.slot)))
+		s.logger.Debug("slotOracle: double tick", zap.Uint64("slot", uint64(s.slot)))
 	}
 	nextSlotStartTime := s.genesisTime.Add(casts.DurationFromUint64(uint64(nextSlot)) * s.slotDuration)
 	s.timer.Reset(time.Until(nextSlotStartTime))
@@ -101,8 +101,8 @@ func (s *slotTicker) Next() <-chan time.Time {
 	return s.timer.C()
 }
 
-// Slot implements SlotTicker.Slot.
+// Slot implements SlotOracle.Slot.
 // Note: this method is not thread-safe.
-func (s *slotTicker) Slot() phase0.Slot {
+func (s *slotOracle) Slot() phase0.Slot {
 	return s.slot
 }

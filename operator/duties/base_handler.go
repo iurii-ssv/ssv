@@ -3,10 +3,9 @@ package duties
 import (
 	"context"
 
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv/networkconfig"
-	"github.com/ssvlabs/ssv/operator/slotticker"
+	"github.com/ssvlabs/ssv/operator/slotoracle"
+	"go.uber.org/zap"
 )
 
 //go:generate mockgen -package=duties -destination=./base_handler_mock.go -source=./base_handler.go
@@ -21,7 +20,7 @@ type dutyHandler interface {
 		validatorProvider ValidatorProvider,
 		validatorController ValidatorController,
 		dutiesExecutor DutiesExecutor,
-		slotTickerProvider slotticker.Provider,
+		slotOracleProvider slotoracle.Provider,
 		reorgEvents chan ReorgEvent,
 		indicesChange chan struct{},
 	)
@@ -38,7 +37,7 @@ type baseHandler struct {
 	validatorProvider   ValidatorProvider
 	validatorController ValidatorController
 	dutiesExecutor      DutiesExecutor
-	ticker              slotticker.SlotTicker
+	ticker              slotoracle.SlotOracle
 
 	reorg         chan ReorgEvent
 	indicesChange chan struct{}
@@ -55,7 +54,7 @@ func (h *baseHandler) Setup(
 	validatorProvider ValidatorProvider,
 	validatorController ValidatorController,
 	dutiesExecutor DutiesExecutor,
-	slotTickerProvider slotticker.Provider,
+	slotOracleProvider slotoracle.Provider,
 	reorgEvents chan ReorgEvent,
 	indicesChange chan struct{},
 ) {
@@ -66,7 +65,7 @@ func (h *baseHandler) Setup(
 	h.validatorProvider = validatorProvider
 	h.validatorController = validatorController
 	h.dutiesExecutor = dutiesExecutor
-	h.ticker = slotTickerProvider()
+	h.ticker = slotOracleProvider()
 	h.reorg = reorgEvents
 	h.indicesChange = indicesChange
 }

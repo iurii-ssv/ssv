@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv/eth/executionclient"
 	"github.com/ssvlabs/ssv/exporter/api"
 	qbftstorage "github.com/ssvlabs/ssv/ibft/storage"
@@ -16,12 +14,12 @@ import (
 	"github.com/ssvlabs/ssv/operator/duties"
 	"github.com/ssvlabs/ssv/operator/duties/dutystore"
 	"github.com/ssvlabs/ssv/operator/fee_recipient"
-	"github.com/ssvlabs/ssv/operator/slotticker"
 	"github.com/ssvlabs/ssv/operator/storage"
 	"github.com/ssvlabs/ssv/operator/validator"
 	beaconprotocol "github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon"
 	storage2 "github.com/ssvlabs/ssv/registry/storage"
 	"github.com/ssvlabs/ssv/storage/basedb"
+	"go.uber.org/zap"
 )
 
 // Node represents the behavior of SSV node
@@ -70,7 +68,7 @@ type operatorNode struct {
 }
 
 // New is the constructor of operatorNode
-func New(logger *zap.Logger, opts Options, slotTickerProvider slotticker.Provider, qbftStorage *qbftstorage.QBFTStores) Node {
+func New(logger *zap.Logger, opts Options, slotOracleProvider slotoracle.Provider, qbftStorage *qbftstorage.QBFTStores) Node {
 	node := &operatorNode{
 		context:          opts.Context,
 		validatorsCtrl:   opts.ValidatorController,
@@ -92,7 +90,7 @@ func New(logger *zap.Logger, opts Options, slotTickerProvider slotticker.Provide
 			IndicesChg:          opts.ValidatorController.IndicesChangeChan(),
 			ValidatorExitCh:     opts.ValidatorController.ValidatorExitChan(),
 			DutyStore:           opts.DutyStore,
-			SlotTickerProvider:  slotTickerProvider,
+			SlotOracleProvider:  slotOracleProvider,
 			P2PNetwork:          opts.P2PNetwork,
 		}),
 		feeRecipientCtrl: fee_recipient.NewController(&fee_recipient.ControllerOptions{
@@ -102,7 +100,7 @@ func New(logger *zap.Logger, opts Options, slotTickerProvider slotticker.Provide
 			ShareStorage:       opts.ValidatorOptions.RegistryStorage.Shares(),
 			RecipientStorage:   opts.ValidatorOptions.RegistryStorage,
 			OperatorDataStore:  opts.ValidatorOptions.OperatorDataStore,
-			SlotTickerProvider: slotTickerProvider,
+			SlotOracleProvider: slotOracleProvider,
 		}),
 
 		ws:        opts.WS,

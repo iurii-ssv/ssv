@@ -11,21 +11,20 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/bellatrix"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/require"
-	gomock "go.uber.org/mock/gomock"
-	"go.uber.org/zap"
-
 	spectypes "github.com/ssvlabs/ssv-spec/types"
 	"github.com/ssvlabs/ssv/logging"
 	"github.com/ssvlabs/ssv/networkconfig"
 	operatordatastore "github.com/ssvlabs/ssv/operator/datastore"
-	"github.com/ssvlabs/ssv/operator/slotticker"
-	"github.com/ssvlabs/ssv/operator/slotticker/mocks"
+	"github.com/ssvlabs/ssv/operator/slotoracle"
+	"github.com/ssvlabs/ssv/operator/slotoracle/mocks"
 	"github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon"
 	"github.com/ssvlabs/ssv/protocol/v2/types"
 	registrystorage "github.com/ssvlabs/ssv/registry/storage"
 	"github.com/ssvlabs/ssv/storage/basedb"
 	"github.com/ssvlabs/ssv/storage/kv"
+	"github.com/stretchr/testify/require"
+	gomock "go.uber.org/mock/gomock"
+	"go.uber.org/zap"
 )
 
 func TestSubmitProposal(t *testing.T) {
@@ -63,7 +62,7 @@ func TestSubmitProposal(t *testing.T) {
 			return nil
 		}).Times(numberOfRequests)
 
-		ticker := mocks.NewMockSlotTicker(ctrl)
+		ticker := mocks.NewMockSlotOracle(ctrl)
 		mockTimeChan := make(chan time.Time)
 		mockSlotChan := make(chan phase0.Slot)
 		ticker.EXPECT().Next().Return(mockTimeChan).AnyTimes()
@@ -72,7 +71,7 @@ func TestSubmitProposal(t *testing.T) {
 		}).AnyTimes()
 
 		frCtrl.beaconClient = client
-		frCtrl.slotTickerProvider = func() slotticker.SlotTicker {
+		frCtrl.slotOracleProvider = func() slotoracle.SlotOracle {
 			return ticker
 		}
 
@@ -106,13 +105,13 @@ func TestSubmitProposal(t *testing.T) {
 			return errors.New("failed to submit")
 		}).MinTimes(2).MaxTimes(2)
 
-		ticker := mocks.NewMockSlotTicker(ctrl)
+		ticker := mocks.NewMockSlotOracle(ctrl)
 		mockTimeChan := make(chan time.Time, 1)
 		ticker.EXPECT().Next().Return(mockTimeChan).AnyTimes()
 		ticker.EXPECT().Slot().Return(phase0.Slot(100)).AnyTimes()
 
 		frCtrl.beaconClient = client
-		frCtrl.slotTickerProvider = func() slotticker.SlotTicker {
+		frCtrl.slotOracleProvider = func() slotoracle.SlotOracle {
 			return ticker
 		}
 

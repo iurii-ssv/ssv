@@ -19,8 +19,6 @@ import (
 	genesisspectypes "github.com/ssvlabs/ssv-spec-pre-cc/types"
 	specqbft "github.com/ssvlabs/ssv-spec/qbft"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv/exporter/convert"
 	"github.com/ssvlabs/ssv/ibft/genesisstorage"
 	"github.com/ssvlabs/ssv/ibft/storage"
@@ -31,7 +29,6 @@ import (
 	"github.com/ssvlabs/ssv/networkconfig"
 	operatordatastore "github.com/ssvlabs/ssv/operator/datastore"
 	"github.com/ssvlabs/ssv/operator/duties"
-	"github.com/ssvlabs/ssv/operator/slotticker"
 	nodestorage "github.com/ssvlabs/ssv/operator/storage"
 	"github.com/ssvlabs/ssv/operator/validators"
 	genesisbeaconprotocol "github.com/ssvlabs/ssv/protocol/genesis/blockchain/beacon"
@@ -59,6 +56,7 @@ import (
 	ssvtypes "github.com/ssvlabs/ssv/protocol/v2/types"
 	registrystorage "github.com/ssvlabs/ssv/registry/storage"
 	"github.com/ssvlabs/ssv/storage/basedb"
+	"go.uber.org/zap"
 )
 
 //go:generate mockgen -package=mocks -destination=./mocks/controller.go -source=./controller.go
@@ -1096,18 +1094,18 @@ func (c *controller) ForkListener(logger *zap.Logger) {
 	}
 
 	go func() {
-		slotTicker := slotticker.New(c.logger, slotticker.Config{
+		slotOracle := slotoracle.New(c.logger, slotoracle.Config{
 			SlotDuration: c.networkConfig.SlotDurationSec(),
 			GenesisTime:  c.networkConfig.GetGenesisTime(),
 		})
 
-		next := slotTicker.Next()
+		next := slotOracle.Next()
 		for {
 			select {
 			case <-c.ctx.Done():
 				return
 			case <-next:
-				next = slotTicker.Next()
+				next = slotOracle.Next()
 				if c.networkConfig.PastAlanFork() {
 					// Cancel genesis context to stop the genesis validators.
 					c.cancelGenesisCtx()
