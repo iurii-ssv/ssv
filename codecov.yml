@@ -32,7 +32,7 @@ ignore:
   - "scripts"
   - "operator/duties/mocks"
   - "operator/fee_recipient/mocks"
-  - "operator/slotticker/mocks"
+  - "operator/slotoracle/mocks"
   - "operator/validator/mocks"
   - "network/streams/metrics.go"
   - "network/discovery/metrics.go"

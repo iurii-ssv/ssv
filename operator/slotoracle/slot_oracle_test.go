@@ -1,4 +1,4 @@
-package slotticker
+package slotoracle
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 )
 
-func TestSlotTicker(t *testing.T) {
+func TestSlotOracle(t *testing.T) {
 	const numTicks = 3
 	slotDuration := 200 * time.Millisecond
 	// Set the genesis time such that we start from slot 1
@@ -33,7 +33,7 @@ func TestSlotTicker(t *testing.T) {
 	}
 }
 
-func TestSlotTicker2(t *testing.T) {
+func TestSlotOracle2(t *testing.T) {
 	slotDuration := 200 * time.Millisecond
 	dummyChan := make(chan struct{}, 1)
 	dummyChan <- struct{}{}
@@ -131,7 +131,7 @@ func TestBoundedDrift(t *testing.T) {
 	require.True(t, elapsed >= expectedDuration-buffer && elapsed <= expectedDuration+buffer, "Drifted too far from expected time. Expected: %v, Actual: %v", expectedDuration.String(), elapsed.String())
 }
 
-func TestMultipleSlotTickers(t *testing.T) {
+func TestMultipleSlotOracles(t *testing.T) {
 	const (
 		numTickers    = 1000
 		ticksPerTimer = 3
@@ -245,7 +245,7 @@ func TestDoubleTickWarning(t *testing.T) {
 	core, recorded := observer.New(zap.DebugLevel)
 	logger := zap.New(core)
 
-	// Initialize the slotTicker with the mock timer provider
+	// Initialize the slotOracle with the mock timer provider
 	ticker := newWithCustomTimer(logger, Config{
 		SlotDuration: 200 * time.Millisecond,
 		GenesisTime:  time.Now(),
@@ -276,7 +276,7 @@ func TestDoubleTickWarning(t *testing.T) {
 
 	// Extracting and checking the log message
 	loggedEntry := recorded.All()[0]
-	require.Equal(t, "slotTicker: double tick", loggedEntry.Message)
+	require.Equal(t, "slotOracle: double tick", loggedEntry.Message)
 	require.Equal(t, zap.DebugLevel, loggedEntry.Level)
 
 	// Extracting and checking the slot number from the log fields
@@ -290,7 +290,7 @@ func TestDoubleTickRealTimer(t *testing.T) {
 	core, recorded := observer.New(zap.DebugLevel)
 	logger := zap.New(core)
 
-	// Initialize the slotTicker with the mock timer provider
+	// Initialize the slotOracle with the mock timer provider
 	mockTimer := &mockTimer{timer: NewTimer(time.Hour).(*timer)}
 	slotTime := 200 * time.Millisecond
 	firstSlotTime := time.Now()
@@ -312,7 +312,7 @@ func TestDoubleTickRealTimer(t *testing.T) {
 	secondSlot := ticker.Slot()
 	require.Equal(t, phase0.Slot(2), secondSlot)
 
-	// Expect the SlotTicker to realize it woke up early, and wait for the 3rd slot instead.
+	// Expect the SlotOracle to realize it woke up early, and wait for the 3rd slot instead.
 	<-ticker.Next()
 	require.WithinDuration(t, firstSlotTime.Add(3*slotTime), time.Now(), 5*time.Millisecond, "Expected the first tick to occur after 1/10th of a slot")
 	thirdSlot := ticker.Slot()
@@ -325,7 +325,7 @@ func TestDoubleTickRealTimer(t *testing.T) {
 
 	// Extracting and checking the log message
 	loggedEntry := recorded.All()[0]
-	require.Equal(t, "slotTicker: double tick", loggedEntry.Message)
+	require.Equal(t, "slotOracle: double tick", loggedEntry.Message)
 	require.Equal(t, zap.DebugLevel, loggedEntry.Level)
 
 	// Extracting and checking the slot number from the log fields

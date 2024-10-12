@@ -11,32 +11,31 @@ import (
 	"github.com/sourcegraph/conc/pool"
 	genesisspectypes "github.com/ssvlabs/ssv-spec-pre-cc/types"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
+	"github.com/ssvlabs/ssv/logging"
+	"github.com/ssvlabs/ssv/networkconfig"
+	"github.com/ssvlabs/ssv/operator/slotoracle"
+	mockslotoracle "github.com/ssvlabs/ssv/operator/slotoracle/mocks"
+	mocknetwork "github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon/mocks"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
-
-	"github.com/ssvlabs/ssv/logging"
-	"github.com/ssvlabs/ssv/networkconfig"
-	"github.com/ssvlabs/ssv/operator/slotticker"
-	mockslotticker "github.com/ssvlabs/ssv/operator/slotticker/mocks"
-	mocknetwork "github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon/mocks"
 )
 
-type MockSlotTicker interface {
+type MockSlotOracle interface {
 	Next() <-chan time.Time
 	Slot() phase0.Slot
 	Subscribe() chan phase0.Slot
 }
 
-type mockSlotTicker struct {
+type mockSlotOracle struct {
 	slotChan chan phase0.Slot
 	timeChan chan time.Time
 	slot     phase0.Slot
 	mu       sync.Mutex
 }
 
-func NewMockSlotTicker() MockSlotTicker {
-	ticker := &mockSlotTicker{
+func NewMockSlotOracle() MockSlotOracle {
+	ticker := &mockSlotOracle{
 		slotChan: make(chan phase0.Slot),
 		timeChan: make(chan time.Time),
 	}
@@ -44,7 +43,7 @@ func NewMockSlotTicker() MockSlotTicker {
 	return ticker
 }
 
-func (m *mockSlotTicker) start() {
+func (m *mockSlotOracle) start() {
 	go func() {
 		for slot := range m.slotChan {
 			m.mu.Lock()
@@ -55,35 +54,35 @@ func (m *mockSlotTicker) start() {
 	}()
 }
 
-func (m *mockSlotTicker) Next() <-chan time.Time {
+func (m *mockSlotOracle) Next() <-chan time.Time {
 	return m.timeChan
 }
 
-func (m *mockSlotTicker) Slot() phase0.Slot {
+func (m *mockSlotOracle) Slot() phase0.Slot {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.slot
 }
 
-func (m *mockSlotTicker) Subscribe() chan phase0.Slot {
+func (m *mockSlotOracle) Subscribe() chan phase0.Slot {
 	return m.slotChan
 }
 
-type mockSlotTickerService struct {
+type mockSlotOracleService struct {
 	event.Feed
 }
 
 func setupSchedulerAndMocks(t *testing.T, handlers []dutyHandler, currentSlot *SafeValue[phase0.Slot], alanForkEpoch phase0.Epoch) (
 	*Scheduler,
 	*zap.Logger,
-	*mockSlotTickerService,
+	*mockSlotOracleService,
 	time.Duration,
 	context.CancelFunc,
 	*pool.ContextPool,
 	func(),
 ) {
 	ctrl := gomock.NewController(t)
-	// A 200ms timeout ensures the test passes, even with mockSlotTicker overhead.
+	// A 200ms timeout ensures the test passes, even with mockSlotOracle overhead.
 	timeout := 200 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -94,7 +93,7 @@ func setupSchedulerAndMocks(t *testing.T, handlers []dutyHandler, currentSlot *S
 	mockValidatorProvider := NewMockValidatorProvider(ctrl)
 	mockValidatorController := NewMockValidatorController(ctrl)
 	mockDutyExecutor := NewMockDutyExecutor(ctrl)
-	mockSlotService := &mockSlotTickerService{}
+	mockSlotService := &mockSlotOracleService{}
 	mockNetworkConfig := networkconfig.NetworkConfig{
 		Beacon:        mocknetwork.NewMockBeaconNetwork(ctrl),
 		AlanForkEpoch: alanForkEpoch,
@@ -108,8 +107,8 @@ func setupSchedulerAndMocks(t *testing.T, handlers []dutyHandler, currentSlot *S
 		ValidatorProvider:   mockValidatorProvider,
 		ValidatorController: mockValidatorController,
 		DutyExecutor:        mockDutyExecutor,
-		SlotTickerProvider: func() slotticker.SlotTicker {
-			ticker := NewMockSlotTicker()
+		SlotOracleProvider: func() slotoracle.SlotOracle {
+			ticker := NewMockSlotOracle()
 			mockSlotService.Subscribe(ticker.Subscribe())
 			return ticker
 		},
@@ -422,7 +421,7 @@ func TestScheduler_Run(t *testing.T) {
 
 	mockBeaconNode := NewMockBeaconNode(ctrl)
 	mockValidatorProvider := NewMockValidatorProvider(ctrl)
-	mockTicker := mockslotticker.NewMockSlotTicker(ctrl)
+	mockTicker := mockslotoracle.NewMockSlotOracle(ctrl)
 	// create multiple mock duty handlers
 	mockDutyHandler1 := NewMockdutyHandler(ctrl)
 	mockDutyHandler2 := NewMockdutyHandler(ctrl)
@@ -435,7 +434,7 @@ func TestScheduler_Run(t *testing.T) {
 		BeaconNode:        mockBeaconNode,
 		Network:           networkconfig.TestNetwork,
 		ValidatorProvider: mockValidatorProvider,
-		SlotTickerProvider: func() slotticker.SlotTicker {
+		SlotOracleProvider: func() slotoracle.SlotOracle {
 			return mockTicker
 		},
 	}
@@ -475,7 +474,7 @@ func TestScheduler_Regression_IndicesChangeStuck(t *testing.T) {
 
 	mockBeaconNode := NewMockBeaconNode(ctrl)
 	mockValidatorProvider := NewMockValidatorProvider(ctrl)
-	mockTicker := mockslotticker.NewMockSlotTicker(ctrl)
+	mockTicker := mockslotoracle.NewMockSlotOracle(ctrl)
 	// create multiple mock duty handlers
 
 	opts := &SchedulerOptions{
@@ -483,7 +482,7 @@ func TestScheduler_Regression_IndicesChangeStuck(t *testing.T) {
 		BeaconNode:        mockBeaconNode,
 		Network:           networkconfig.TestNetwork,
 		ValidatorProvider: mockValidatorProvider,
-		SlotTickerProvider: func() slotticker.SlotTicker {
+		SlotOracleProvider: func() slotoracle.SlotOracle {
 			return mockTicker
 		},
 		IndicesChg: make(chan struct{}),

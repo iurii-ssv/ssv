@@ -9,10 +9,9 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	genesisspectypes "github.com/ssvlabs/ssv-spec-pre-cc/types"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv/logging/fields"
 	"github.com/ssvlabs/ssv/operator/duties/dutystore"
+	"go.uber.org/zap"
 )
 
 type AttesterHandler struct {
@@ -112,7 +111,7 @@ func (h *AttesterHandler) HandleDuties(ctx context.Context) {
 				h.processFetching(ctx, currentEpoch, reorgEvent.Slot)
 			} else if reorgEvent.Current {
 				// reset & re-fetch next epoch duties if in appropriate slot range,
-				// otherwise they will be fetched by the appropriate slot tick.
+				// otherwise they will be fetched by the appropriate slot oracle tick.
 				if h.shouldFetchNexEpoch(reorgEvent.Slot) {
 					h.duties.ResetEpoch(currentEpoch + 1)
 					h.fetchNextEpoch = true

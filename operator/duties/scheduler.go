@@ -24,7 +24,6 @@ import (
 	"github.com/ssvlabs/ssv/network"
 	"github.com/ssvlabs/ssv/networkconfig"
 	"github.com/ssvlabs/ssv/operator/duties/dutystore"
-	"github.com/ssvlabs/ssv/operator/slotticker"
 	"github.com/ssvlabs/ssv/protocol/v2/types"
 	"github.com/ssvlabs/ssv/utils/casts"
 	"go.uber.org/zap"
@@ -34,7 +33,7 @@ import (
 
 var slotDelayHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 	Name:    "slot_ticker_delay_milliseconds",
-	Help:    "The delay in milliseconds of the slot ticker",
+	Help:    "The delay in milliseconds of the slot oracle ticks",
 	Buckets: []float64{5, 10, 20, 100, 500, 5000}, // Buckets in milliseconds. Adjust as per your needs.
 })
 
@@ -99,7 +98,7 @@ type SchedulerOptions struct {
 	DutyExecutor        DutyExecutor
 	IndicesChg          chan struct{}
 	ValidatorExitCh     <-chan ExitDescriptor
-	SlotTickerProvider  slotticker.Provider
+	SlotOracleProvider  slotoracle.Provider
 	DutyStore           *dutystore.Store
 	P2PNetwork          network.P2PNetwork
 }
@@ -110,7 +109,7 @@ type Scheduler struct {
 	network             networkconfig.NetworkConfig
 	validatorProvider   ValidatorProvider
 	validatorController ValidatorController
-	slotTickerProvider  slotticker.Provider
+	slotOracleProvider  slotoracle.Provider
 	dutyExecutor        DutyExecutor
 
 	handlers            []dutyHandler
@@ -118,7 +117,7 @@ type Scheduler struct {
 
 	reorg      chan ReorgEvent
 	indicesChg chan struct{}
-	ticker     slotticker.SlotTicker
+	ticker     slotoracle.SlotOracle
 	waitCond   *sync.Cond
 	pool       *pool.ContextPool
 
@@ -138,7 +137,7 @@ func NewScheduler(opts *SchedulerOptions) *Scheduler {
 		beaconNode:          opts.BeaconNode,
 		executionClient:     opts.ExecutionClient,
 		network:             opts.Network,
-		slotTickerProvider:  opts.SlotTickerProvider,
+		slotOracleProvider:  opts.SlotOracleProvider,
 		dutyExecutor:        opts.DutyExecutor,
 		validatorProvider:   opts.ValidatorProvider,
 		validatorController: opts.ValidatorController,
@@ -154,7 +153,7 @@ func NewScheduler(opts *SchedulerOptions) *Scheduler {
 			NewValidatorRegistrationHandler(),
 		},
 
-		ticker:   opts.SlotTickerProvider(),
+		ticker:   opts.SlotOracleProvider(),
 		reorg:    make(chan ReorgEvent),
 		waitCond: sync.NewCond(&sync.Mutex{}),
 	}
@@ -201,7 +200,7 @@ func (s *Scheduler) Start(ctx context.Context, logger *zap.Logger) error {
 			s.validatorProvider,
 			s.validatorController,
 			s,
-			s.slotTickerProvider,
+			s.slotOracleProvider,
 			reorgCh,
 			indicesChangeCh,
 		)
@@ -217,7 +216,7 @@ func (s *Scheduler) Start(ctx context.Context, logger *zap.Logger) error {
 		})
 	}
 
-	go s.SlotTicker(ctx)
+	go s.SlotOracle(ctx)
 
 	go indicesChangeFeed.FanOut(ctx, s.indicesChg)
 	go reorgFeed.FanOut(ctx, s.reorg)
@@ -262,8 +261,8 @@ func (f *EventFeed[T]) FanOut(ctx context.Context, in <-chan T) {
 	}
 }
 
-// SlotTicker handles the "head" events from the beacon node.
-func (s *Scheduler) SlotTicker(ctx context.Context) {
+// SlotOracle handles the "head" events from the beacon node.
+func (s *Scheduler) SlotOracle(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():

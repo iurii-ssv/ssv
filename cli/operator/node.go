@@ -18,8 +18,6 @@ import (
 	"github.com/spf13/cobra"
 	genesisspectypes "github.com/ssvlabs/ssv-spec-pre-cc/types"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv/api/handlers"
 	apiserver "github.com/ssvlabs/ssv/api/server"
 	"github.com/ssvlabs/ssv/beacon/goclient"
@@ -54,7 +52,6 @@ import (
 	"github.com/ssvlabs/ssv/operator/duties/dutystore"
 	"github.com/ssvlabs/ssv/operator/keys"
 	"github.com/ssvlabs/ssv/operator/keystore"
-	"github.com/ssvlabs/ssv/operator/slotticker"
 	operatorstorage "github.com/ssvlabs/ssv/operator/storage"
 	"github.com/ssvlabs/ssv/operator/validator"
 	"github.com/ssvlabs/ssv/operator/validators"
@@ -67,6 +64,7 @@ import (
 	"github.com/ssvlabs/ssv/utils/commons"
 	"github.com/ssvlabs/ssv/utils/format"
 	"github.com/ssvlabs/ssv/utils/rsaencryption"
+	"go.uber.org/zap"
 )
 
 type KeyStore struct {
@@ -184,8 +182,8 @@ var StartNodeCmd = &cobra.Command{
 
 		cfg.P2pNetworkConfig.Ctx = cmd.Context()
 
-		slotTickerProvider := func() slotticker.SlotTicker {
-			return slotticker.New(logger, slotticker.Config{
+		slotOracleProvider := func() slotoracle.SlotOracle {
+			return slotoracle.New(logger, slotoracle.Config{
 				SlotDuration: networkConfig.SlotDurationSec(),
 				GenesisTime:  networkConfig.GetGenesisTime(),
 			})
@@ -195,7 +193,7 @@ var StartNodeCmd = &cobra.Command{
 		cfg.ConsensusClient.GasLimit = spectypes.DefaultGasLimit
 		cfg.ConsensusClient.Network = networkConfig.Beacon.GetNetwork()
 
-		consensusClient := setupConsensusClient(logger, operatorDataStore, slotTickerProvider)
+		consensusClient := setupConsensusClient(logger, operatorDataStore, slotOracleProvider)
 
 		executionClient, err := executionclient.New(
 			cmd.Context(),
@@ -340,7 +338,7 @@ var StartNodeCmd = &cobra.Command{
 		cfg.SSVOptions.ValidatorController = validatorCtrl
 		cfg.SSVOptions.ValidatorStore = validatorStore
 
-		operatorNode = operator.New(logger, cfg.SSVOptions, slotTickerProvider, storageMap)
+		operatorNode = operator.New(logger, cfg.SSVOptions, slotOracleProvider, storageMap)
 
 		if cfg.MetricsAPIPort > 0 {
 			go startMetricsHandler(cmd.Context(), logger, db, metricsReporter, cfg.MetricsAPIPort, cfg.EnableProfile)
@@ -653,9 +651,9 @@ func setupP2P(logger *zap.Logger, db basedb.Database, mr metricsreporter.Metrics
 func setupConsensusClient(
 	logger *zap.Logger,
 	operatorDataStore operatordatastore.OperatorDataStore,
-	slotTickerProvider slotticker.Provider,
+	slotOracleProvider slotoracle.Provider,
 ) *goclient.GoClient {
-	cl, err := goclient.New(logger, cfg.ConsensusClient, operatorDataStore, slotTickerProvider)
+	cl, err := goclient.New(logger, cfg.ConsensusClient, operatorDataStore, slotOracleProvider)
 	if err != nil {
 		logger.Fatal("failed to create beacon go-client", zap.Error(err),
 			fields.Address(cfg.ConsensusClient.BeaconNodeAddr))

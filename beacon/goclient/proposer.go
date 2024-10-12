@@ -16,10 +16,8 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
-	"go.uber.org/zap"
-
 	"github.com/ssvlabs/ssv/logging/fields"
-	"github.com/ssvlabs/ssv/operator/slotticker"
+	"go.uber.org/zap"
 )
 
 const (
@@ -262,10 +260,10 @@ func (gc *GoClient) createValidatorRegistration(pubkey []byte, feeRecipient bell
 	return signedReg
 }
 
-func (gc *GoClient) registrationSubmitter(slotTickerProvider slotticker.Provider) {
+func (gc *GoClient) registrationSubmitter(slotOracleProvider slotoracle.Provider) {
 	operatorID := gc.operatorDataStore.AwaitOperatorID()
 
-	ticker := slotTickerProvider()
+	ticker := slotOracleProvider()
 	for {
 		select {
 		case <-gc.ctx.Done():

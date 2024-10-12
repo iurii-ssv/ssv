@@ -8,14 +8,12 @@ import (
 	eth2apiv1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	spectypes "github.com/ssvlabs/ssv-spec/types"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
-
-	"github.com/ssvlabs/ssv/utils/hashmap"
-
 	"github.com/ssvlabs/ssv/operator/duties/dutystore"
 	mocknetwork "github.com/ssvlabs/ssv/protocol/v2/blockchain/beacon/mocks"
 	ssvtypes "github.com/ssvlabs/ssv/protocol/v2/types"
+	"github.com/ssvlabs/ssv/utils/hashmap"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func setupCommitteeDutiesMock(
@@ -380,7 +378,7 @@ func TestScheduler_Committee_Indices_Changed_Attester_Only(t *testing.T) {
 	currentSlot.Set(phase0.Slot(1))
 	waitForDuties.Set(true)
 	ticker.Send(currentSlot.Get())
-	// Wait for the slot ticker to be triggered in the attester, sync committee, and cluster handlers.
+	// Wait for the slot oracle ticks to be triggered in the attester, sync committee, and cluster handlers.
 	// This ensures that no attester duties are fetched before the cluster ticker is triggered,
 	// preventing a scenario where the cluster handler executes duties in the same slot as the attester fetching them.
 	time.Sleep(10 * time.Millisecond)
@@ -483,7 +481,7 @@ func TestScheduler_Committee_Indices_Changed_Attester_Only_2(t *testing.T) {
 	currentSlot.Set(phase0.Slot(1))
 	waitForDuties.Set(true)
 	ticker.Send(currentSlot.Get())
-	// Wait for the slot ticker to be triggered in the attester, sync committee, and cluster handlers.
+	// Wait for the slot oracle ticks to be triggered in the attester, sync committee, and cluster handlers.
 	// This ensures that no attester duties are fetched before the cluster ticker is triggered,
 	// preventing a scenario where the cluster handler executes duties in the same slot as the attester fetching them.
 	time.Sleep(10 * time.Millisecond)
@@ -576,7 +574,7 @@ func TestScheduler_Committee_Indices_Changed_Attester_Only_3(t *testing.T) {
 	currentSlot.Set(phase0.Slot(1))
 	waitForDuties.Set(true)
 	ticker.Send(currentSlot.Get())
-	// Wait for the slot ticker to be triggered in the attester, sync committee, and cluster handlers.
+	// Wait for the slot oracle ticks to be triggered in the attester, sync committee, and cluster handlers.
 	// This ensures that no attester duties are fetched before the cluster ticker is triggered,
 	// preventing a scenario where the cluster handler executes duties in the same slot as the attester fetching them.
 	time.Sleep(10 * time.Millisecond)
@@ -799,7 +797,7 @@ func TestScheduler_Committee_Reorg_Previous_Epoch_Transition_Indices_Changed_Att
 	// STEP 6: wait for attester duties to be fetched again for the current epoch
 	currentSlot.Set(phase0.Slot(65))
 	ticker.Send(currentSlot.Get())
-	// Wait for the slot ticker to be triggered in the attester, sync committee, and cluster handlers.
+	// Wait for the slot oracle ticks to be triggered in the attester, sync committee, and cluster handlers.
 	// This ensures that no attester duties are fetched before the cluster ticker is triggered,
 	// preventing a scenario where the cluster handler executes duties in the same slot as the attester fetching them.
 	time.Sleep(10 * time.Millisecond)
