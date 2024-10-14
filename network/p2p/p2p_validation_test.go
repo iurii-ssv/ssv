@@ -147,7 +147,6 @@ func TestP2pNetwork_MessageValidation(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Prepare a pool of broadcasters.
-	mu := sync.Mutex{}
 	height := atomic.Int64{}
 	roleBroadcasts := map[spectypes.RunnerRole]int{}
 	broadcasters := pool.New().WithErrors().WithContext(ctx)
@@ -156,9 +155,9 @@ func TestP2pNetwork_MessageValidation(t *testing.T) {
 			for i := 0; i < 12; i++ {
 				role := roles[i%len(roles)]
 
-				mu.Lock()
+				mtx.Lock()
 				roleBroadcasts[role]++
-				mu.Unlock()
+				mtx.Unlock()
 
 				msgID, msg := dummyMsg(t, hex.EncodeToString(shares[rand.Intn(len(shares))].ValidatorPubKey[:]), int(height.Add(1)), role)
 				err := node.Broadcast(msgID, msg)
@@ -190,10 +189,9 @@ func TestP2pNetwork_MessageValidation(t *testing.T) {
 	// Wait for the broadcasters to finish.
 	err := broadcasters.Wait()
 	require.NoError(t, err)
-	time.Sleep(1 * time.Second)
 
 	// Assert that the messages were distributed as expected.
-	time.Sleep(7 * time.Second)
+	time.Sleep(8 * time.Second)
 
 	interval := 100 * time.Millisecond
 	for i := 0; i < nodeCount; i++ {
