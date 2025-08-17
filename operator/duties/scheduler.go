@@ -121,13 +121,12 @@ type Scheduler struct {
 	reorg      chan ReorgEvent
 	indicesChg chan struct{}
 	ticker     slotticker.SlotTicker
-	waitCond   *sync.Cond
 	pool       *pool.ContextPool
 
-	headSlot                  phase0.Slot
-	lastBlockEpoch            phase0.Epoch
-	currentDutyDependentRoot  phase0.Root
-	previousDutyDependentRoot phase0.Root
+	// waitCond coordinates access to headSlot.
+	waitCond *sync.Cond
+	// headSlot is the latest (most up-to-date) slot number.
+	headSlot phase0.Slot
 }
 
 func NewScheduler(opts *SchedulerOptions) *Scheduler {
@@ -264,7 +263,7 @@ func (f *EventFeed[T]) FanOut(ctx context.Context, in <-chan T) {
 	}
 }
 
-// SlotTicker handles the "head" events from the beacon node.
+// SlotTicker periodically updates Scheduler headSlot to the latest value.
 func (s *Scheduler) SlotTicker(ctx context.Context) {
 	for {
 		select {
@@ -273,18 +272,17 @@ func (s *Scheduler) SlotTicker(ctx context.Context) {
 		case <-s.ticker.Next():
 			slot := s.ticker.Slot()
 
-			delay := s.network.SlotDurationSec() / casts.DurationFromUint64(goclient.IntervalsPerSlot) /* a third of the slot duration */
+			// delay a third of the slot duration
+			delay := s.network.SlotDurationSec() / casts.DurationFromUint64(goclient.IntervalsPerSlot)
 			finalTime := s.network.Beacon.GetSlotStartTime(slot).Add(delay)
 			waitDuration := time.Until(finalTime)
-
 			if waitDuration > 0 {
 				time.Sleep(waitDuration)
 
-				// Lock the mutex before broadcasting
 				s.waitCond.L.Lock()
 				s.headSlot = slot
-				s.waitCond.Broadcast()
 				s.waitCond.L.Unlock()
+				s.waitCond.Broadcast()
 			}
 		}
 	}
@@ -297,68 +295,70 @@ func (s *Scheduler) HandleHeadEvent(logger *zap.Logger) func(event *eth2apiv1.Ev
 			return
 		}
 
-		var zeroRoot phase0.Root
-
 		data := event.Data.(*eth2apiv1.HeadEvent)
 		if data.Slot != s.network.Beacon.EstimatedCurrentSlot() {
 			return
 		}
 
 		// check for reorg
+		var (
+			lastBlockEpoch            phase0.Epoch
+			previousDutyDependentRoot phase0.Root
+			currentDutyDependentRoot  phase0.Root
+		)
 		epoch := s.network.Beacon.EstimatedEpochAtSlot(data.Slot)
 		buildStr := fmt.Sprintf("e%v-s%v-#%v", epoch, data.Slot, data.Slot%32+1)
 		logger := logger.With(zap.String("epoch_slot_pos", buildStr))
-		if s.lastBlockEpoch != 0 {
-			if epoch > s.lastBlockEpoch {
-				// Change of epoch.
-				// Ensure that the new previous dependent root is the same as the old current root.
-				if !bytes.Equal(s.previousDutyDependentRoot[:], zeroRoot[:]) &&
-					!bytes.Equal(s.currentDutyDependentRoot[:], data.PreviousDutyDependentRoot[:]) {
-					logger.Debug("🔀 Previous duty dependent root has changed on epoch transition",
-						zap.String("old_current_dependent_root", fmt.Sprintf("%#x", s.currentDutyDependentRoot[:])),
-						zap.String("new_previous_dependent_root", fmt.Sprintf("%#x", data.PreviousDutyDependentRoot[:])))
+		if lastBlockEpoch != 0 && epoch > lastBlockEpoch {
+			// Change of epoch.
+			// Ensure that the new previous dependent root is the same as the old current root.
+			if !previousDutyDependentRoot.IsZero() &&
+				!bytes.Equal(currentDutyDependentRoot[:], data.PreviousDutyDependentRoot[:]) {
+				logger.Debug("🔀 Previous duty dependent root has changed on epoch transition",
+					zap.String("old_current_dependent_root", fmt.Sprintf("%#x", currentDutyDependentRoot[:])),
+					zap.String("new_previous_dependent_root", fmt.Sprintf("%#x", data.PreviousDutyDependentRoot[:])))
 
-					s.reorg <- ReorgEvent{
-						Slot:     data.Slot,
-						Previous: true,
-					}
+				s.reorg <- ReorgEvent{
+					Slot:     data.Slot,
+					Previous: true,
 				}
-			} else {
-				// Same epoch
-				// Ensure that the previous dependent roots are the same.
-				if !bytes.Equal(s.previousDutyDependentRoot[:], zeroRoot[:]) &&
-					!bytes.Equal(s.previousDutyDependentRoot[:], data.PreviousDutyDependentRoot[:]) {
-					logger.Debug("🔀 Previous duty dependent root has changed",
-						zap.String("old_previous_dependent_root", fmt.Sprintf("%#x", s.previousDutyDependentRoot[:])),
-						zap.String("new_previous_dependent_root", fmt.Sprintf("%#x", data.PreviousDutyDependentRoot[:])))
+			}
+		} else {
+			// Same epoch
+			// Ensure that the previous dependent roots are the same.
+			if !previousDutyDependentRoot.IsZero() &&
+				!bytes.Equal(previousDutyDependentRoot[:], data.PreviousDutyDependentRoot[:]) {
+				logger.Debug("🔀 Previous duty dependent root has changed",
+					zap.String("old_previous_dependent_root", fmt.Sprintf("%#x", previousDutyDependentRoot[:])),
+					zap.String("new_previous_dependent_root", fmt.Sprintf("%#x", data.PreviousDutyDependentRoot[:])))
 
-					s.reorg <- ReorgEvent{
-						Slot:     data.Slot,
-						Previous: true,
-					}
+				s.reorg <- ReorgEvent{
+					Slot:     data.Slot,
+					Previous: true,
 				}
+			}
 
-				// Ensure that the current dependent roots are the same.
-				if !bytes.Equal(s.currentDutyDependentRoot[:], zeroRoot[:]) &&
-					!bytes.Equal(s.currentDutyDependentRoot[:], data.CurrentDutyDependentRoot[:]) {
-					logger.Debug("🔀 Current duty dependent root has changed",
-						zap.String("old_current_dependent_root", fmt.Sprintf("%#x", s.currentDutyDependentRoot[:])),
-						zap.String("new_current_dependent_root", fmt.Sprintf("%#x", data.CurrentDutyDependentRoot[:])))
+			// Ensure that the current dependent roots are the same.
+			if !currentDutyDependentRoot.IsZero() &&
+				!bytes.Equal(currentDutyDependentRoot[:], data.CurrentDutyDependentRoot[:]) {
+				logger.Debug("🔀 Current duty dependent root has changed",
+					zap.String("old_current_dependent_root", fmt.Sprintf("%#x", currentDutyDependentRoot[:])),
+					zap.String("new_current_dependent_root", fmt.Sprintf("%#x", data.CurrentDutyDependentRoot[:])))
 
-					s.reorg <- ReorgEvent{
-						Slot:    data.Slot,
-						Current: true,
-					}
+				s.reorg <- ReorgEvent{
+					Slot:    data.Slot,
+					Current: true,
 				}
 			}
 		}
 
-		s.lastBlockEpoch = epoch
-		s.previousDutyDependentRoot = data.PreviousDutyDependentRoot
-		s.currentDutyDependentRoot = data.CurrentDutyDependentRoot
+		lastBlockEpoch = epoch
+		previousDutyDependentRoot = data.PreviousDutyDependentRoot
+		currentDutyDependentRoot = data.CurrentDutyDependentRoot
 
 		currentTime := time.Now()
-		delay := s.network.SlotDurationSec() / casts.DurationFromUint64(goclient.IntervalsPerSlot) /* a third of the slot duration */
+		// delay a third of the slot duration
+		delay := s.network.SlotDurationSec() / casts.DurationFromUint64(goclient.IntervalsPerSlot)
 		slotStartTimeWithDelay := s.network.Beacon.GetSlotStartTime(data.Slot).Add(delay)
 		if currentTime.Before(slotStartTimeWithDelay) {
 			logger.Debug("🏁 Head event: Block arrived before 1/3 slot", zap.Duration("time_saved", slotStartTimeWithDelay.Sub(currentTime)))
@@ -369,8 +369,8 @@ func (s *Scheduler) HandleHeadEvent(logger *zap.Logger) func(event *eth2apiv1.Ev
 
 			s.waitCond.L.Lock()
 			s.headSlot = data.Slot
-			s.waitCond.Broadcast()
 			s.waitCond.L.Unlock()
+			s.waitCond.Broadcast()
 		}
 	}
 }
@@ -472,9 +472,10 @@ func (s *Scheduler) loggerWithCommitteeDutyContext(logger *zap.Logger, committee
 		With(fields.StartTimeUnixMilli(s.network.Beacon.GetSlotStartTime(duty.Slot)))
 }
 
-// waitOneThirdOrValidBlock waits until one-third of the slot has transpired (SECONDS_PER_SLOT / 3 seconds after the start of slot)
+// waitOneThirdOrValidBlock waits until either one-third of the provided slot has transpired
+// (SECONDS_PER_SLOT / 3 seconds after the start of slot) or a head event from Beacon node
+// about arriving block.
 func (s *Scheduler) waitOneThirdOrValidBlock(slot phase0.Slot) {
-	// Wait for the event or signal
 	s.waitCond.L.Lock()
 	for s.headSlot < slot {
 		s.waitCond.Wait()
